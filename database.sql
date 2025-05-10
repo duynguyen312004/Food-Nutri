@@ -47,7 +47,8 @@ CREATE TABLE food_items (
   fat_g         NUMERIC(8,2) NOT NULL,
   barcode       VARCHAR(50)  UNIQUE,
   is_custom     BOOLEAN      NOT NULL DEFAULT FALSE,
-  created_by    BIGINT       REFERENCES users(user_id),
+  created_by    BIGINT       REFERENCES users(user_id),  
+  image_url     TEXT,
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
@@ -105,7 +106,8 @@ CREATE TABLE exercise_type (
   exercise_type_id BIGSERIAL PRIMARY KEY,
   name             VARCHAR(100) NOT NULL,
   mets             NUMERIC(5,2),
-  category         VARCHAR(50)
+  category         VARCHAR(50),
+  icon_url          TEXT
 );
 
 -- 11. Bảng exercise_log
@@ -150,3 +152,42 @@ CREATE INDEX idx_barcode_scans_user ON barcode_scans(user_id);
 CREATE INDEX idx_water_log_user ON water_log(user_id);
 CREATE INDEX idx_weight_log_user ON weight_log(user_id);
 CREATE INDEX idx_exercise_log_user ON exercise_log(user_id);
+
+-- trigger tính calories từng bài tập đã logged
+CREATE OR REPLACE FUNCTION calculate_calories_burned()
+RETURNS TRIGGER AS $$
+DECLARE
+    met_value NUMERIC(5,2);
+    weight_value NUMERIC(6,2);
+BEGIN
+    -- Lấy MET từ bảng exercise_type
+    SELECT mets INTO met_value
+    FROM exercise_type
+    WHERE exercise_type_id = NEW.exercise_type_id;
+
+    -- Lấy cân nặng gần nhất trước thời điểm logged_at
+    SELECT weight_kg INTO weight_value
+    FROM weight_log
+    WHERE user_id = NEW.user_id
+      AND logged_at <= NEW.logged_at
+    ORDER BY logged_at DESC
+    LIMIT 1;
+
+    -- Nếu không có MET hoặc weight, gán giá trị mặc định
+    IF met_value IS NULL THEN
+        met_value := 1.0;
+    END IF;
+    IF weight_value IS NULL THEN
+        weight_value := 64.0; -- mặc định nếu chưa log cân nặng
+    END IF;
+
+    -- Tính calories_burned
+    NEW.calories_burned := ROUND(met_value * weight_value * (NEW.duration_min / 60.0), 2);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_calories_burned
+BEFORE INSERT OR UPDATE ON exercise_log
+FOR EACH ROW
+EXECUTE FUNCTION calculate_calories_burned();

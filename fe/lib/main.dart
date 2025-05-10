@@ -3,9 +3,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutrition_app/blocs/auth/auth_bloc.dart';
+import 'package:nutrition_app/blocs/exercise/exercise_cubit.dart';
 import 'package:nutrition_app/blocs/metrics/metrics_cubit.dart';
+import 'package:nutrition_app/blocs/recent_log/recent_log_cubit.dart';
 import 'package:nutrition_app/firebase_options.dart';
 import 'package:nutrition_app/services/auth_service.dart';
+import 'package:nutrition_app/services/exercise_service.dart';
+import 'package:nutrition_app/services/log_service.dart';
 
 import 'blocs/user/user_data_cubit.dart';
 import 'services/user_service.dart';
@@ -30,6 +34,8 @@ void main() async {
           BlocProvider(
             create: (context) => MetricsCubit(UserService()),
           ),
+          BlocProvider(create: (context) => RecentLogsCubit(LogService())),
+          BlocProvider(create: (context) => ExerciseCubit(ExerciseService())),
           BlocProvider(
             create: (context) => UserDataCubit(UserService())
               ..loadUserData(), // Fetch user data when the app starts

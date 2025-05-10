@@ -11,6 +11,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now())
 
+
 class UserProfile(db.Model):
     __tablename__ = 'user_profile'
     user_id = db.Column(db.BigInteger, db.ForeignKey('users.user_id', ondelete = 'CASCADE'), primary_key=True)
@@ -21,6 +22,7 @@ class UserProfile(db.Model):
     height_cm = db.Column(db.Numeric(5, 2))
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now())
+
 
 class UserSettings(db.Model):
     __tablename__ = 'user_settings'
@@ -33,12 +35,14 @@ class UserSettings(db.Model):
     drink_water_reminder   = db.Column(db.Boolean, nullable=False, default=True)
     meal_reminder          = db.Column(db.Boolean, nullable=False, default=True)
 
+
 class WeightLog(db.Model):
     __tablename__ = 'weight_log'
     weight_id = db.Column(db.BigInteger, primary_key=True)
     user_id = db.Column(db.BigInteger, db.ForeignKey('users.user_id', ondelete = 'CASCADE'), nullable=False)
     weight_kg = db.Column(db.Numeric(5, 2), nullable=False)
     logged_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+
 
 class Goal(db.Model):
     __tablename__ = 'goals'
@@ -52,25 +56,5 @@ class Goal(db.Model):
     weekly_rate = db.Column(db.Numeric(5, 2), nullable=False, default='0.75')  # e.g., 0.75 kg/week
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
-class ExerciseType(db.Model):
-    __tablename__ = 'exercise_type'
-    exercise_type_id = db.Column(db.BigInteger, primary_key=True)
-    name             = db.Column(db.String(100), nullable=False)
-    mets             = db.Column(db.Numeric(5, 2))
-    category         = db.Column(db.String(50))
-    
-class ExerciseLog(db.Model):
-    __tablename__ = 'exercise_log'
-    exercise_id      = db.Column(db.BigInteger, primary_key=True)
-    user_id          = db.Column(db.BigInteger, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
-    exercise_type_id = db.Column(db.BigInteger, db.ForeignKey('exercise_type.exercise_type_id'), nullable=False)
-    duration_min     = db.Column(db.Integer, nullable=False)
-    calories_burned  = db.Column(db.Numeric(8, 2))
-    logged_at        = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
-profiles = db.relationship('UserProfile', backref='user', uselist=False)
-settings = db.relationship('UserSettings', backref='user', uselist=False)
-weight_logs = db.relationship('WeightLog', backref='user', uselist=False)
-goals = db.relationship('Goal', backref='user', uselist=False)
-exercise_logs = db.relationship('ExerciseLog', backref='user', uselist=False)
-exercise_type = db.relationship('ExerciseType', backref='exercise_log', uselist=False)
+

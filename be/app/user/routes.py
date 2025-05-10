@@ -142,6 +142,12 @@ def metrics():
 
     # 5) Normalize macros
     macros_raw = raw.get('macros', {})
+    macros_cons_raw = raw.get('macros_consumed', {})
+    macros_consumed = {
+    'protein': macros_cons_raw.get('protein_g', 0),
+    'carbs':   macros_cons_raw.get('carbs_g',   0),
+    'fat':     macros_cons_raw.get('fat_g',     0),
+    }
     macros = {
         'protein': macros_raw.get('protein_g', 0),
         'carbs':   macros_raw.get('carbs_g',   0),
@@ -152,6 +158,10 @@ def metrics():
         'bmr':    raw.get('bmr', 0),
         'tdee':   raw.get('tdee', 0),
         'macros': macros,
+        'macros_consumed': macros_consumed,
+        'remaining_calories': raw.get('remaining_calories', 0),
+        'calories_burned': raw['calories_burned'],
+        'calories_consumed': raw['calories_consumed']
     }
     print(">>> Metrics JSON for", for_date, ":", json.dumps(result))
     return jsonify(result), 200

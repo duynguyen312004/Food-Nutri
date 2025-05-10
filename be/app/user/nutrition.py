@@ -1,8 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 from extensions import db
-from user.models import User, UserProfile, UserSettings, WeightLog, Goal, ExerciseLog, ExerciseType
+from user.models import User, UserProfile, UserSettings, WeightLog, Goal
+from exercise.models import ExerciseLog, ExerciseType
+from meal.models import Meal, MealEntry
+from food.models import FoodItem
 
 def calculate_bmi(weight_kg: float, height_cm: float) -> float:
     h = height_cm / 100  # Convert cm to meters
@@ -31,9 +34,9 @@ def activity_factor_from_sessions(sessions_per_week: int) -> float:
     else:
         return 1.9  # Super active
     
-def calculate_tdee(bmr: float, sessions_per_week: int, exercise_extra: float = 0) -> int:
+def calculate_tdee(bmr: float, sessions_per_week: int) -> int:
     """Calculate Total Daily Energy Expenditure (TDEE)."""
-    return round(bmr * activity_factor_from_sessions(sessions_per_week) + exercise_extra)
+    return round(bmr * activity_factor_from_sessions(sessions_per_week))
 
 def calculate_macros(calories: int, goal_direction: str) -> dict:
     """
@@ -68,11 +71,78 @@ def calculate_macros(calories: int, goal_direction: str) -> dict:
     }
 
 
-def fetch_exercise_data(user_id: int, for_date: date) -> tuple[float, int]:
-    """Fetch exercise data for a user within a date range."""
-    result = (db.session.query(
-        func.coalesce(func.sum(ExerciseLog.calories_burned), 0),
-        func.coalesce(func.count(ExerciseLog.exercise_id), 0)
-    ).filter(ExerciseLog.user_id == user_id).filter(func.date(ExerciseLog.logged_at) == for_date).first()
+def fetch_exercise_sessions(user_id: int, for_date: date) -> int:
+    """Đếm buổi tập của user trong 7 ngày tính từ for_date."""
+    week_ago = for_date - timedelta(days=6)
+    count = (
+        db.session.query(func.count(ExerciseLog.exercise_id))
+        .filter(ExerciseLog.user_id == user_id)
+        .filter(ExerciseLog.logged_at >= week_ago)
+        .filter(func.date(ExerciseLog.logged_at) <= for_date)
+        .scalar()
     )
-    return float(result[0]), int(result[1])
+    return int(count or 0)
+
+def estimate_calories_burned(met: float, weight_kg: float, duration_min: int) -> float:
+    return round(float(met) * float(weight_kg) * (duration_min / 60), 2)
+
+def fetch_exercise_burned(user_id: int, for_date: date, weight_kg: float) -> tuple[float, int]:
+    logs = (db.session.query(ExerciseLog, ExerciseType)
+            .join(ExerciseType, ExerciseLog.exercise_type_id == ExerciseType.exercise_type_id)
+            .filter(ExerciseLog.user_id == user_id)
+            .filter(func.date(ExerciseLog.logged_at) == for_date)
+            .all())
+
+    total_calories = 0
+    count = 0
+
+    for log, ex_type in logs:
+        met = ex_type.mets or 1.0
+        calories = estimate_calories_burned(met, weight_kg, log.duration_min)
+        total_calories += calories
+        count += 1
+
+    return total_calories, count
+
+def fetch_calories_consumed(user_id: int, for_date: date) -> float:
+    entries = (
+        db.session.query(MealEntry, FoodItem)
+        .join(Meal, Meal.meal_id == MealEntry.meal_id)
+        .join(FoodItem, FoodItem.food_item_id == MealEntry.food_item_id)
+        .filter(Meal.user_id == user_id)
+        .filter(Meal.meal_date == for_date)
+        .all()
+    )
+
+    total = 0.0
+    for entry, food in entries:
+        ratio = float(entry.quantity) / float(food.serving_size) if food.serving_size else 1
+        total += ratio * float(food.calories)
+
+    return round(total, 2)
+def fetch_macros_consumed(user_id: int, for_date: date) -> dict:
+    """
+    Sum protein, carbs, fat đã ăn trong ngày, dựa trên MealEntry × FoodItem.
+    Trả về dict với keys: protein_g, carbs_g, fat_g (float, grams).
+    """
+    entries = (
+        db.session.query(MealEntry, FoodItem)
+        .join(Meal, Meal.meal_id == MealEntry.meal_id)
+        .join(FoodItem, FoodItem.food_item_id == MealEntry.food_item_id)
+        .filter(Meal.user_id == user_id)
+        .filter(Meal.meal_date == for_date)
+        .all()
+    )
+
+    total_p, total_c, total_f = 0.0, 0.0, 0.0
+    for entry, food in entries:
+        ratio = float(entry.quantity) / float(food.serving_size) if food.serving_size else 1
+        total_p += ratio * float(food.protein_g)
+        total_c += ratio * float(food.carbs_g)
+        total_f += ratio * float(food.fat_g)
+
+    return {
+        'protein_g': round(total_p, 1),
+        'carbs_g':   round(total_c, 1),
+        'fat_g':     round(total_f, 1),
+    }

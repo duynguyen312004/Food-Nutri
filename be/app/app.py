@@ -3,6 +3,9 @@ from sqlalchemy import text
 from config import Config
 from extensions import db, init_firebase
 from user.routes import user_bp
+from logs.routes import logs_bp
+from exercise.routes import exercise_bp
+
 
 
 def create_app():
@@ -14,6 +17,8 @@ def create_app():
     init_firebase(app)
 
     app.register_blueprint(user_bp)
+    app.register_blueprint(logs_bp)
+    app.register_blueprint(exercise_bp)
 
     return app
 

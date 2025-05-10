@@ -4,9 +4,12 @@ from user.models import User, UserProfile, UserSettings, WeightLog, Goal
 from user.nutrition import (
     calculate_bmi,
     calculate_bmr,
-    fetch_exercise_data,
+    fetch_calories_consumed,
+    fetch_exercise_burned,
     calculate_tdee,
-    calculate_macros
+    calculate_macros,
+    fetch_exercise_sessions,
+    fetch_macros_consumed
 )
 
 # --- Upsert Helpers ---
@@ -60,8 +63,6 @@ def upsert_settings(user_id, data):
 
 # --- Nutrition & Metrics Calculation ---
 
-from datetime import date
-
 def compute_user_metrics(user_id, data, prof, for_date):
     """
     Compute BMI, BMR, TDEE and macro targets for the user on a specific date.
@@ -78,11 +79,17 @@ def compute_user_metrics(user_id, data, prof, for_date):
     bmr = calculate_bmr(weight, height, age, gender)
 
     # --- Dữ liệu tập luyện cho đúng ngày đó ---
-    exercise_extra, sessions = fetch_exercise_data(user_id, for_date)
+    sessions = fetch_exercise_sessions(user_id, for_date)
+    #calories đã tiêu thụ
+    calories_consumed = fetch_calories_consumed(user_id, for_date)
+    #calories đã đốt cháy
+    calories_burned, count = fetch_exercise_burned(user_id, for_date, weight)
 
     # TDEE cũng dựa trên bmr và dữ liệu sessions/exercise_extra
-    tdee = calculate_tdee(bmr, sessions, exercise_extra)
-
+    tdee = calculate_tdee(bmr, sessions)
+    remaining_calories = tdee - calories_consumed + calories_burned
+    #macro_consumed
+    macros_consumed = fetch_macros_consumed(user_id, for_date)
     # Macro target vẫn dựa trên tdee và mục tiêu
     macros = calculate_macros(tdee, data.get('goal_direction', 'maintain'))
 
@@ -91,6 +98,10 @@ def compute_user_metrics(user_id, data, prof, for_date):
         'bmr': bmr,
         'tdee': tdee,
         'macros': macros,
+        'macros_consumed': macros_consumed,
+        'remaining_calories': remaining_calories,
+        'calories_burned': calories_burned,
+        'calories_consumed': calories_consumed
     }
 
 
