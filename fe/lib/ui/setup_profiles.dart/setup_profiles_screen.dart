@@ -44,9 +44,9 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   // Pace mapping: kg to change per week
   static const Map<String, double> _paceMap = {
-    'Thư giãn': 0.75,
-    'Ổn định': 1.25,
-    'Tăng cường': 2,
+    'Thư giãn': 0.5,
+    'Ổn định': 0.75,
+    'Tăng cường': 1,
   };
 
   // Definitions for progress plans (difficulty, icon, color)

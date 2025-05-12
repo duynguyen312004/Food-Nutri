@@ -9,7 +9,8 @@ from user.nutrition import (
     calculate_tdee,
     calculate_macros,
     fetch_exercise_sessions,
-    fetch_macros_consumed
+    fetch_macros_consumed,
+    fetch_water_intake
 )
 
 # --- Upsert Helpers ---
@@ -61,6 +62,7 @@ def upsert_settings(user_id, data):
     db.session.commit()
     return sett
 
+
 # --- Nutrition & Metrics Calculation ---
 
 def compute_user_metrics(user_id, data, prof, for_date):
@@ -71,6 +73,7 @@ def compute_user_metrics(user_id, data, prof, for_date):
     # --- Thông tin cơ bản ---
     weight = float(data.get('current_weight_kg', 0))
     height = float(prof.height_cm)
+
     # Tính tuổi tính theo for_date, không phải always today
     age = (for_date - prof.date_of_birth).days // 365
     gender = prof.gender or data.get('gender', 'male')
@@ -80,28 +83,60 @@ def compute_user_metrics(user_id, data, prof, for_date):
 
     # --- Dữ liệu tập luyện cho đúng ngày đó ---
     sessions = fetch_exercise_sessions(user_id, for_date)
+
     #calories đã tiêu thụ
     calories_consumed = fetch_calories_consumed(user_id, for_date)
+
     #calories đã đốt cháy
     calories_burned, count = fetch_exercise_burned(user_id, for_date, weight)
 
-    # TDEE cũng dựa trên bmr và dữ liệu sessions/exercise_extra
+    # TDEE cũng dựa trên bmr và sessions
     tdee = calculate_tdee(bmr, sessions)
-    remaining_calories = tdee - calories_consumed + calories_burned
+    # Lấy mức giảm của user (kg/tuần), default=0.25
+    weekly_rate = data.get('weekly_rate', 0.25)
+
+    # Tính target_calories
+    # 7700 kcal ≈ 1 kg mỡ (hoặc mô cơ)
+    daily_adjustment = round((weekly_rate * 7700) / 7)
+
+    if data['goal_direction'] == 'giảm cân':
+        target_calories = tdee - daily_adjustment
+    elif data['goal_direction'] == 'tăng cân':
+        target_calories = tdee + daily_adjustment
+    else:  # giữ nguyên
+        target_calories = tdee
+
+    # sau khi tính target_calories
+    target_calories = max(target_calories, bmr * 1.1)
+    
+    #tính calories còn 
+    remaining_calories = target_calories - calories_consumed + calories_burned
+
     #macro_consumed
     macros_consumed = fetch_macros_consumed(user_id, for_date)
-    # Macro target vẫn dựa trên tdee và mục tiêu
-    macros = calculate_macros(tdee, data.get('goal_direction', 'maintain'))
 
+    # Macro target vẫn dựa trên target_calories và mục tiêu
+    macros = calculate_macros(target_calories, data.get('goal_direction'))
+
+    #Tính nước
+    water_intake_ml = fetch_water_intake(user_id, for_date)
+    
+    target_calories    = int(round(target_calories))
+    remaining_calories = int(round(remaining_calories))
+    calories_burned    = int(round(calories_burned))
+    calories_consumed  = int(round(calories_consumed))
+    
     return {
         'bmi': bmi,
         'bmr': bmr,
-        'tdee': tdee,
+        'tdee': tdee,                     # TDEE cơ bản (chưa ± deficit/surplus)
+        'target_calories': target_calories,  # Lượng calories user cần ăn (TDEE ± daily_adjustment)
         'macros': macros,
         'macros_consumed': macros_consumed,
         'remaining_calories': remaining_calories,
         'calories_burned': calories_burned,
-        'calories_consumed': calories_consumed
+        'calories_consumed': calories_consumed,
+        'water_intake_ml' : water_intake_ml
     }
 
 

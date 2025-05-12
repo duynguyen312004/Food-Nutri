@@ -2,10 +2,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 from extensions import db
-from user.models import User, UserProfile, UserSettings, WeightLog, Goal
 from exercise.models import ExerciseLog, ExerciseType
 from meal.models import Meal, MealEntry
 from food.models import FoodItem
+from water.models import WaterLog
 
 def calculate_bmi(weight_kg: float, height_cm: float) -> float:
     h = height_cm / 100  # Convert cm to meters
@@ -39,10 +39,7 @@ def calculate_tdee(bmr: float, sessions_per_week: int) -> int:
     return round(bmr * activity_factor_from_sessions(sessions_per_week))
 
 def calculate_macros(calories: int, goal_direction: str) -> dict:
-    """
-    Return macro targets (in grams) based on percentage split,
-    điều chỉnh theo mục tiêu: 'lose', 'maintain', 'gain'.
-    """
+
     # Tỷ lệ mặc định cho duy trì cân nặng
     protein_pct = 0.20
     fat_pct     = 0.30
@@ -146,3 +143,16 @@ def fetch_macros_consumed(user_id: int, for_date: date) -> dict:
         'carbs_g':   round(total_c, 1),
         'fat_g':     round(total_f, 1),
     }
+
+    # --- Water ---
+
+
+def fetch_water_intake(user_id: int, for_date: date) -> int:
+    """Tổng ml nước đã uống trong ngày."""
+    total_ml = (
+        db.session.query(func.sum(WaterLog.intake_ml))
+        .filter(WaterLog.user_id == user_id)
+        .filter(func.date(WaterLog.logged_at) == for_date)
+        .scalar()
+    ) or 0
+    return int(total_ml)

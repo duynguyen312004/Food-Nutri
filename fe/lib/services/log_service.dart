@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:nutrition_app/models/log_entry.dart';
 import 'package:nutrition_app/models/recent_log_model.dart';
 
 class LogService {
@@ -26,6 +27,26 @@ class LogService {
       return rawData.map((e) => RecentLog.fromJson(e)).toList();
     } else {
       throw Exception('Failed to fetch recent logs: ${response.statusCode}');
+    }
+  }
+
+  Future<List<LogEntry>> fetchLogs(DateTime date) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final uri = Uri.parse('$_baseUrl?date=$dateStr');
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (idToken != null) 'Authorization': 'Bearer $idToken',
+      },
+    );
+    if (response.statusCode == 200) {
+      final rawList = jsonDecode(response.body) as List<dynamic>;
+      return rawList.map((e) => LogEntry.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to fetch logs: \${response.statusCode}');
     }
   }
 }

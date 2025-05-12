@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutrition_app/blocs/auth/auth_bloc.dart';
 import 'package:nutrition_app/blocs/exercise/exercise_cubit.dart';
+import 'package:nutrition_app/blocs/log/journal_cubit.dart';
 import 'package:nutrition_app/blocs/metrics/metrics_cubit.dart';
 import 'package:nutrition_app/blocs/recent_log/recent_log_cubit.dart';
 import 'package:nutrition_app/firebase_options.dart';
@@ -35,6 +36,7 @@ void main() async {
             create: (context) => MetricsCubit(UserService()),
           ),
           BlocProvider(create: (context) => RecentLogsCubit(LogService())),
+          BlocProvider(create: (context) => JournalCubit(LogService())),
           BlocProvider(create: (context) => ExerciseCubit(ExerciseService())),
           BlocProvider(
             create: (context) => UserDataCubit(UserService())

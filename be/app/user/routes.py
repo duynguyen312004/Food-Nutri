@@ -112,29 +112,17 @@ def metrics():
         except ValueError:
             return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-    # DEBUG: In ra for_date
-    print(">>> for_date =", for_date)
-
-    # 2) In toàn bộ weight_log để kiểm tra
-    all_logs = (WeightLog.query
-                .filter_by(user_id=uid)
-                .order_by(WeightLog.logged_at.desc())
-                .all())
-    print(">>> All weight_log entries:")
-    for entry in all_logs:
-        print("   ", entry.logged_at, entry.weight_kg)
-
     # 3) Lấy log cân nặng gần nhất <= for_date
     wl = (WeightLog.query
           .filter_by(user_id=uid)
           .filter(func.date(WeightLog.logged_at) <= for_date)
           .order_by(WeightLog.logged_at.desc())
           .first())
-    print(">>> Matched wl for_date:", wl)
 
     data = {
         'current_weight_kg': wl.weight_kg if wl else 0,
         'goal_direction': Goal.query.filter_by(user_id=uid).first().goal_direction,
+        'weekly_rate': Goal.query.filter_by(user_id=uid).first().weekly_rate,
     }
 
     # 4) Tính metrics
@@ -157,11 +145,13 @@ def metrics():
         'bmi':    raw.get('bmi', 0),
         'bmr':    raw.get('bmr', 0),
         'tdee':   raw.get('tdee', 0),
+        'target_calories': raw.get('target_calories', 0),
         'macros': macros,
         'macros_consumed': macros_consumed,
         'remaining_calories': raw.get('remaining_calories', 0),
         'calories_burned': raw['calories_burned'],
-        'calories_consumed': raw['calories_consumed']
+        'calories_consumed': raw['calories_consumed'],
+        'water_intake_ml': raw['water_intake_ml']
     }
     print(">>> Metrics JSON for", for_date, ":", json.dumps(result))
     return jsonify(result), 200
