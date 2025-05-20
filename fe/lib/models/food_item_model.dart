@@ -1,52 +1,40 @@
-class RecentLog {
-  final String type;
+class FoodItem {
   final int foodItemId;
   final String name;
-  final String? imageUrl;
-  final double perCalories;
-  final double quantity;
-  final String unit;
   final double calories;
   final double protein;
   final double carbs;
   final double fat;
   final double servingSize;
   final String servingUnit;
-  final DateTime createdAt;
+  final bool isCustom;
+  final String? imageUrl;
 
-  RecentLog({
-    required this.type,
+  FoodItem({
     required this.foodItemId,
     required this.name,
-    required this.imageUrl,
-    required this.perCalories,
-    required this.quantity,
-    required this.unit,
     required this.calories,
     required this.protein,
     required this.carbs,
     required this.fat,
     required this.servingSize,
     required this.servingUnit,
-    required this.createdAt,
+    required this.isCustom,
+    this.imageUrl,
   });
 
-  factory RecentLog.fromJson(Map<String, dynamic> json) {
-    return RecentLog(
-      type: json['type'],
+  factory FoodItem.fromJson(Map<String, dynamic> json) {
+    return FoodItem(
       foodItemId: json['food_item_id'],
       name: json['name'],
-      imageUrl: json['image_url'],
-      perCalories: (json['per_calories'] as num).toDouble(),
-      quantity: (json['quantity'] as num).toDouble(),
-      unit: json['unit'],
       calories: (json['calories'] as num).toDouble(),
       protein: (json['protein'] as num).toDouble(),
       carbs: (json['carbs'] as num).toDouble(),
       fat: (json['fat'] as num).toDouble(),
       servingSize: (json['serving_size'] as num).toDouble(),
       servingUnit: json['serving_unit'],
-      createdAt: DateTime.parse(json['created_at']),
+      isCustom: json['is_custom'] as bool,
+      imageUrl: json['image_url'],
     );
   }
 }

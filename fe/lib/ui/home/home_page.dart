@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
 import '../../blocs/metrics/metrics_state.dart';
-import '../../blocs/recent_log/recent_log_cubit.dart';
-import '../../blocs/recent_log/recent_log_state.dart';
 
 /// HomePage gồm Header, Calorie Card và Macro Pager với dữ liệu động từ MetricsCubit
 class HomePage extends StatefulWidget {
@@ -21,7 +19,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     final today = DateTime.now();
     context.read<MetricsCubit>().loadMetricsForDate(today);
-    context.read<RecentLogsCubit>().loadRecentLogs(today);
   }
 
   @override
@@ -41,7 +38,6 @@ class _HomePageState extends State<HomePage> {
                 SliverToBoxAdapter(
                     child: _buildCalorieCard(state as MetricsLoaded)),
                 SliverToBoxAdapter(child: _buildMacroPager(state)),
-                SliverToBoxAdapter(child: _buildRecentLogsSection()),
               ],
             );
           },
@@ -85,9 +81,6 @@ class _HomePageState extends State<HomePage> {
                           context
                               .read<MetricsCubit>()
                               .loadMetricsForDate(selectedDate);
-                          context
-                              .read<RecentLogsCubit>()
-                              .loadRecentLogs(selectedDate);
                         },
                   child: Column(
                     children: [
@@ -156,6 +149,9 @@ class _HomePageState extends State<HomePage> {
 
     final pct = target > 0 ? (eaten / target).clamp(0.0, 1.0) : 0.0;
 
+    final bool isOver = remaining < 0;
+    final int adjustedRemaining = isOver ? remaining.abs() : remaining;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Card(
@@ -165,7 +161,7 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Header
+              // Header row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -179,39 +175,86 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Circle + Remaining
+              const SizedBox(height: 16),
+
+              // Circular progress + remaining calories
               SizedBox(
                 height: 160,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     SizedBox(
-                      height: 140,
-                      width: 140,
+                      height: 160,
+                      width: 160,
                       child: CircularProgressIndicator(
                         value: pct,
                         strokeWidth: 12,
                         backgroundColor: Colors.white12,
                         valueColor: AlwaysStoppedAnimation(
-                            Theme.of(context).colorScheme.primary),
+                          isOver
+                              ? Colors.redAccent
+                              : Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('$remaining',
-                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          '$adjustedRemaining kcal',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: isOver ? Colors.redAccent : null,
+                                  ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Calo được phép',
-                            style: Theme.of(context).textTheme.titleMedium),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isOver ? 'Calo dư thừa' : 'Calo được phép',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: isOver ? Colors.redAccent : null,
+                                  ),
+                            ),
+                            const SizedBox(width: 3),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title:
+                                        const Text('Cách tính Calo được phép'),
+                                    content: const Text(
+                                        'Calo được phép = Mục tiêu - Đã ăn + Đã đốt\n\n'
+                                        '• "Mục tiêu" đã bao gồm điều chỉnh giảm/tăng cân\n'
+                                        '• Tập luyện giúp bạn được ăn thêm mà vẫn đạt mục tiêu'),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text('Đã hiểu'),
+                                        onPressed: () => Navigator.pop(context),
+                                      )
+                                    ],
+                                  ),
+                                );
+                              },
+                              child: const Icon(Icons.info_outline,
+                                  size: 16, color: Colors.white60),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              // Stats row: Goal / Eaten / Burned
+
+              const SizedBox(height: 24),
+
+              // Stats row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -232,7 +275,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$value', style: Theme.of(context).textTheme.titleMedium),
+          Text('$value kcal', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -288,6 +331,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildMacroItem(
       String icon, String label, double value, double goal, Color color) {
     final pct = goal > 0 ? (value / goal).clamp(0.0, 1.0) : 0.0;
+    final isOver = value > goal;
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -311,55 +356,16 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 6),
-          Text('${value.toStringAsFixed(1)}/${goal.toStringAsFixed(1)}g',
-              style: const TextStyle(fontSize: 12)),
+          Text(
+            '${value.toStringAsFixed(1)}/${goal.toStringAsFixed(1)}g',
+            style: TextStyle(
+              fontSize: 12,
+              color: isOver ? Colors.redAccent : Colors.white,
+              fontWeight: isOver ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRecentLogsSection() {
-    return BlocBuilder<RecentLogsCubit, RecentLogsState>(
-      builder: (context, state) {
-        if (state is RecentLogsLoading) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: CircularProgressIndicator(),
-          );
-        } else if (state is RecentLogsError) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text('Lỗi: ${state.message}'),
-          );
-        } else if (state is RecentLogsLoaded) {
-          final meals = state.logs.where((l) => l.type == 'meal').toList();
-          final exercises =
-              state.logs.where((l) => l.type == 'exercise').toList();
-          if (meals.isEmpty && exercises.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                  child: Text('Chưa có dữ liệu',
-                      style: TextStyle(color: Colors.white30))),
-            );
-          }
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('Nhật ký gần đây',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
     );
   }
 }

@@ -7,14 +7,13 @@ import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/log/journal_state.dart';
 import '../../models/log_entry.dart';
 import 'add_entry_page.dart';
+import 'food_detail_page.dart';
 
-/// Màn Nhật ký chính, hiển thị metrics và timeline các hoạt động trong ngày
 class JournalPage extends StatefulWidget {
   const JournalPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _JournalPageState createState() => _JournalPageState();
+  State<JournalPage> createState() => _JournalPageState();
 }
 
 class _JournalPageState extends State<JournalPage> {
@@ -49,7 +48,6 @@ class _JournalPageState extends State<JournalPage> {
   Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
-        // Thanh chọn ngày
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -75,70 +73,47 @@ class _JournalPageState extends State<JournalPage> {
             ],
           ),
         ),
-        // Metrics bar
         BlocBuilder<MetricsCubit, MetricsState>(
           builder: (context, state) {
             if (state is MetricsLoaded) {
               final m = state.metrics;
-
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _MetricTile(
-                        iconPath: 'assets/icons/kcal.png',
-                        label:
-                            '${m['calories_consumed'].toInt()}/${m['remaining_calories'].toInt()}',
-                        color: Colors.purpleAccent,
-                        percent:
-                            m['calories_consumed'] / m['remaining_calories'],
-                      ),
-                      const SizedBox(width: 8),
-                      _MetricTile(
-                        iconPath: 'assets/icons/proteins.png',
-                        label:
-                            '${m['macros_consumed']['protein'].toDouble()}/${m['macros']['protein'].toDouble()}',
-                        color: Colors.redAccent,
-                        percent: m['macros_consumed']['protein'] /
-                            m['macros']['protein'],
-                      ),
-                      const SizedBox(width: 8),
-                      _MetricTile(
-                        iconPath: 'assets/icons/carb.png',
-                        label:
-                            '${m['macros_consumed']['carbs'].toDouble()}/${m['macros']['carbs'].toDouble()}',
-                        color: Colors.orangeAccent,
-                        percent: m['macros_consumed']['carbs'] /
-                            m['macros']['carbs'],
-                      ),
-                      const SizedBox(width: 8),
-                      _MetricTile(
-                        iconPath: 'assets/icons/fat.png',
-                        label:
-                            '${m['macros_consumed']['fat'].toDouble()}/${m['macros']['fat'].toDouble()}',
-                        color: Colors.greenAccent,
-                        percent:
-                            m['macros_consumed']['fat'] / m['macros']['fat'],
-                      ),
-                      const SizedBox(width: 8),
-
-                      _MetricTile(
-                        iconPath: 'assets/icons/calories.png', // icon đốt calo
-                        label: '${m['calories_burned'].toInt()} kcal',
-                        color: Colors.redAccent,
-                        percent: 0.0, // hoặc tính % nếu có target đốt
-                      ),
-                      const SizedBox(width: 8),
-
-                      // 2. Ô nước đã uống
-                      _MetricTile(
-                        iconPath: 'assets/icons/water.png', // icon nước
-                        label: '${m['water_intake_ml'].toInt()} ml',
-                        color: Colors.blueAccent,
-                        percent: 0.0, // hoặc tính % nếu có target nước
-                      ),
+                      _buildMetricTile(
+                          'assets/icons/kcal.png',
+                          '${m['calories_consumed'].toInt()}/${m['remaining_calories'].toInt() + m['calories_consumed'].toInt()} kcal',
+                          Colors.purpleAccent,
+                          m['calories_consumed'] / m['remaining_calories']),
+                      _buildMetricTile(
+                          'assets/icons/proteins.png',
+                          '${m['macros_consumed']['protein'].toDouble()}/${m['macros']['protein'].toDouble()} g',
+                          Colors.redAccent,
+                          m['macros_consumed']['protein'] /
+                              m['macros']['protein']),
+                      _buildMetricTile(
+                          'assets/icons/carb.png',
+                          '${m['macros_consumed']['carbs'].toDouble()}/${m['macros']['carbs'].toDouble()} g',
+                          Colors.orangeAccent,
+                          m['macros_consumed']['carbs'] / m['macros']['carbs']),
+                      _buildMetricTile(
+                          'assets/icons/fat.png',
+                          '${m['macros_consumed']['fat'].toDouble()}/${m['macros']['fat'].toDouble()} g',
+                          Colors.greenAccent,
+                          m['macros_consumed']['fat'] / m['macros']['fat']),
+                      _buildMetricTile(
+                          'assets/icons/calories.png',
+                          '${m['calories_burned'].toInt()} kcal',
+                          Colors.redAccent,
+                          0),
+                      _buildMetricTile(
+                          'assets/icons/water.png',
+                          '${m['water_intake_ml'].toInt()} ml',
+                          Colors.blueAccent,
+                          0),
                     ],
                   ),
                 ),
@@ -148,6 +123,19 @@ class _JournalPageState extends State<JournalPage> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildMetricTile(
+      String iconPath, String label, Color color, double percent) {
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: _MetricTile(
+        iconPath: iconPath,
+        label: label,
+        color: color,
+        percent: percent.clamp(0.0, 1.0),
+      ),
     );
   }
 
@@ -166,47 +154,34 @@ class _JournalPageState extends State<JournalPage> {
           itemCount: 24,
           itemBuilder: (context, hour) {
             final label = '${hour.toString().padLeft(2, '0')}:00';
-            // Lọc toàn bộ entries của khung giờ này
             final entries =
                 logs.where((e) => e.timestamp.hour == hour).toList();
             final hasEntry = entries.isNotEmpty;
-            // Tách riêng từng loại
             final meals = entries.where((e) => e.type == 'meal').toList();
             final waters = entries.where((e) => e.type == 'water').toList();
             final exercises =
                 entries.where((e) => e.type == 'exercise').toList();
             final hasMeals = meals.isNotEmpty;
 
-            // Tính tổng calo & macros chỉ từ meals
-            final cals = meals.fold<double>(
-              0.0,
-              (sum, e) =>
-                  sum + ((e.data['calories'] as num?)?.toDouble() ?? 0.0),
-            );
+            final cals = meals.fold<double>(0.0,
+                (sum, e) => sum + ((e.data['calories'] as num?)?.toInt() ?? 0));
             final p = meals.fold<double>(
-              0.0,
-              (sum, e) =>
-                  sum + ((e.data['protein'] as num?)?.toDouble() ?? 0.0),
-            );
-            final cb = meals.fold<double>(
-              0.0,
-              (sum, e) => sum + ((e.data['carbs'] as num?)?.toDouble() ?? 0.0),
-            );
-            final f = meals.fold<double>(
-              0.0,
-              (sum, e) => sum + ((e.data['fat'] as num?)?.toDouble() ?? 0.0),
-            );
+                0.0,
+                (sum, e) =>
+                    sum + ((e.data['protein'] as num?)?.toDouble() ?? 0));
+            final cb = meals.fold<double>(0.0,
+                (sum, e) => sum + ((e.data['carbs'] as num?)?.toDouble() ?? 0));
+            final f = meals.fold<double>(0.0,
+                (sum, e) => sum + ((e.data['fat'] as num?)?.toDouble() ?? 0));
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Thanh giờ + summary + nút +
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      // time badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
@@ -219,80 +194,176 @@ class _JournalPageState extends State<JournalPage> {
                         child: Text(
                           label,
                           style: TextStyle(
-                            color: hasMeals ? Colors.white : Colors.white70,
-                          ),
+                              color: hasMeals ? Colors.white : Colors.white70),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // summary meals
                       if (hasMeals)
                         Expanded(
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                Image.asset('assets/icons/calories.png',
-                                    width: 12, height: 12),
-                                const SizedBox(width: 4),
-                                Text('${cals.toDouble()} cal',
-                                    style: const TextStyle(fontSize: 12)),
-                                const SizedBox(width: 12),
+                                Image.asset('assets/icons/kcal.png',
+                                    width: 16, height: 16),
+                                const SizedBox(width: 6),
+                                Text('${cals.toInt()} kcal',
+                                    style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 6),
                                 Image.asset('assets/icons/proteins.png',
-                                    width: 12, height: 12),
-                                const SizedBox(width: 4),
+                                    width: 16, height: 16),
+                                const SizedBox(width: 6),
                                 Text('${p.toDouble()}g',
-                                    style: const TextStyle(fontSize: 12)),
-                                const SizedBox(width: 12),
+                                    style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 6),
                                 Image.asset('assets/icons/carb.png',
-                                    width: 12, height: 12),
-                                const SizedBox(width: 4),
+                                    width: 16, height: 16),
+                                const SizedBox(width: 6),
                                 Text('${cb.toDouble()}g',
-                                    style: const TextStyle(fontSize: 12)),
-                                const SizedBox(width: 12),
+                                    style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 6),
                                 Image.asset('assets/icons/fat.png',
-                                    width: 12, height: 12),
-                                const SizedBox(width: 4),
+                                    width: 16, height: 16),
+                                const SizedBox(width: 6),
                                 Text('${f.toDouble()}g',
-                                    style: const TextStyle(fontSize: 12)),
+                                    style: const TextStyle(fontSize: 13)),
                               ],
                             ),
                           ),
                         ),
                       if (hasMeals)
-                        const SizedBox(
-                          width: 10,
-                        )
+                        const SizedBox(width: 8)
                       else
                         const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
                         onPressed: () async {
-                          await Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const AddEntryPage()),
+                              builder: (_) => AddEntryPage(
+                                selectedDate: _selectedDate,
+                                selectedHour: hour,
+                              ),
+                            ),
                           );
-                          _loadForDate(_selectedDate);
+                          if (result == true) _loadForDate(_selectedDate);
                         },
                       ),
                     ],
                   ),
                 ),
+                ...meals.map((e) => Dismissible(
+                      key: ValueKey('meal-${e.logId}-${e.timestamp}'),
+                      direction: DismissDirection.endToStart,
+                      background: _buildDismissBg(),
+                      onDismissed: (_) {
+                        context.read<JournalCubit>().deleteLog(e);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('Đã xoá món ăn: ${e.data['name']}'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.redAccent),
+                        );
+                        _loadForDate(_selectedDate);
+                      },
+                      child: GestureDetector(
+                        onTap: () async {
+                          final quantity = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: context.read<JournalCubit>().foodCubit,
+                                child: FoodDetailPage(
+                                  foodId: e.data['food_item_id'],
+                                  initialQuantity:
+                                      e.data['quantity'].toDouble(),
+                                  isEditing: true,
+                                  timestamp: e.timestamp,
+                                ),
+                              ),
+                            ),
+                          );
+                          if (!context.mounted) return;
+                          if (quantity != null &&
+                              quantity is double &&
+                              quantity != e.data['quantity']) {
+                            context.read<JournalCubit>().updateMealQuantity(
+                                  e.logId,
+                                  quantity,
+                                  timestamp: e.timestamp,
+                                );
 
-                // Danh sách meals
-                if (meals.isNotEmpty) ...meals.map((e) => _MealCard(log: e)),
+                            context
+                                .read<MetricsCubit>()
+                                .loadMetricsForDate(_selectedDate);
 
-                // Danh sách water logs
-                if (waters.isNotEmpty) ...waters.map((e) => _WaterCard(log: e)),
+                            _loadForDate(_selectedDate); // reload logs
 
-                // Danh sách exercise logs
-                if (exercises.isNotEmpty)
-                  ...exercises.map((e) => _ExerciseCard(log: e)),
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Đã cập nhật khẩu phần món ăn'),
+                                  backgroundColor: Colors.blueAccent,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: _MealCard(log: e),
+                      ),
+                    )),
+                ...waters.map((e) => Dismissible(
+                      key: ValueKey('water-${e.logId}'),
+                      direction: DismissDirection.endToStart,
+                      background: _buildDismissBg(),
+                      onDismissed: (_) {
+                        context.read<JournalCubit>().deleteLog(e);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Đã xoá log nước'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.redAccent),
+                        );
+                        _loadForDate(_selectedDate);
+                      },
+                      child: _WaterCard(log: e),
+                    )),
+                ...exercises.map((e) => Dismissible(
+                      key: ValueKey('exercise-${e.logId}'),
+                      direction: DismissDirection.endToStart,
+                      background: _buildDismissBg(),
+                      onDismissed: (_) {
+                        context.read<JournalCubit>().deleteLog(e);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text('Đã xoá bài tập: ${e.data['name']}'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.redAccent),
+                        );
+                        _loadForDate(_selectedDate);
+                      },
+                      child: _ExerciseCard(log: e),
+                    )),
               ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildDismissBg() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 20),
+      child: const Icon(Icons.delete, color: Colors.white),
     );
   }
 }
@@ -303,18 +374,17 @@ class _MetricTile extends StatelessWidget {
   final Color color;
   final double percent;
 
-  const _MetricTile({
-    required this.iconPath,
-    required this.label,
-    required this.color,
-    required this.percent,
-  });
+  const _MetricTile(
+      {required this.iconPath,
+      required this.label,
+      required this.color,
+      required this.percent});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 120, // mỗi ô cố định độ rộng
-      padding: const EdgeInsets.all(10),
+      width: 120,
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -322,9 +392,8 @@ class _MetricTile extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(iconPath, width: 20, height: 20),
+          Image.asset(iconPath, width: 18, height: 18),
           const SizedBox(height: 8),
-
           Flexible(
             child: Text(
               label,
@@ -333,11 +402,10 @@ class _MetricTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
-              value: percent.clamp(0.0, 1.0),
+              value: percent,
               minHeight: 4,
               backgroundColor: Colors.white12,
               valueColor: AlwaysStoppedAnimation(color),
@@ -373,26 +441,26 @@ class _MealCard extends StatelessWidget {
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(img,
-                      width: 48, height: 48, fit: BoxFit.cover))
+                      width: 64, height: 64, fit: BoxFit.cover))
               : const Icon(Icons.fastfood),
           title: Text(
             '$name • $quantity$unit',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           subtitle: Row(children: [
-            Text('${log.data['calories']} cal',
-                style: const TextStyle(fontSize: 12)),
+            Text('${(log.data['calories'] as num?)?.toInt()} kcal',
+                style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Image.asset('assets/icons/proteins.png', width: 12, height: 12),
+            Image.asset('assets/icons/proteins.png', width: 14, height: 14),
             Text(' ${log.data['protein']}g',
-                style: const TextStyle(fontSize: 12)),
+                style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Image.asset('assets/icons/carb.png', width: 12, height: 12),
+            Image.asset('assets/icons/carb.png', width: 14, height: 14),
             Text(' ${log.data['carbs']}g',
-                style: const TextStyle(fontSize: 12)),
+                style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 8),
-            Image.asset('assets/icons/fat.png', width: 12, height: 12),
-            Text(' ${log.data['fat']}g', style: const TextStyle(fontSize: 12)),
+            Image.asset('assets/icons/fat.png', width: 14, height: 14),
+            Text(' ${log.data['fat']}g', style: const TextStyle(fontSize: 14)),
           ]),
         ),
       ),

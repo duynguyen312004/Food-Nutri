@@ -6,12 +6,13 @@ import 'package:nutrition_app/blocs/auth/auth_bloc.dart';
 import 'package:nutrition_app/blocs/exercise/exercise_cubit.dart';
 import 'package:nutrition_app/blocs/log/journal_cubit.dart';
 import 'package:nutrition_app/blocs/metrics/metrics_cubit.dart';
-import 'package:nutrition_app/blocs/recent_log/recent_log_cubit.dart';
+import 'package:nutrition_app/blocs/recent_log/recent_meals_cubit.dart';
 import 'package:nutrition_app/firebase_options.dart';
 import 'package:nutrition_app/services/auth_service.dart';
 import 'package:nutrition_app/services/exercise_service.dart';
 import 'package:nutrition_app/services/log_service.dart';
 
+import 'blocs/food/food_cubit.dart';
 import 'blocs/user/user_data_cubit.dart';
 import 'services/user_service.dart';
 import 'ui/splash/splash_screen.dart';
@@ -29,18 +30,17 @@ void main() async {
       path: 'assets/translations',
       child: MultiBlocProvider(
         providers: [
+          BlocProvider(create: (_) => AuthBloc(authService)),
+          BlocProvider(create: (_) => MetricsCubit(UserService())),
+          BlocProvider(create: (_) => RecentMealsCubit(LogService())),
+          BlocProvider(create: (_) => FoodCubit()),
           BlocProvider(
-            create: (_) => AuthBloc(authService),
+            create: (context) =>
+                JournalCubit(LogService(), context.read<FoodCubit>()),
           ),
+          BlocProvider(create: (_) => ExerciseCubit(ExerciseService())),
           BlocProvider(
-            create: (context) => MetricsCubit(UserService()),
-          ),
-          BlocProvider(create: (context) => RecentLogsCubit(LogService())),
-          BlocProvider(create: (context) => JournalCubit(LogService())),
-          BlocProvider(create: (context) => ExerciseCubit(ExerciseService())),
-          BlocProvider(
-            create: (context) => UserDataCubit(UserService())
-              ..loadUserData(), // Fetch user data when the app starts
+            create: (context) => UserDataCubit(UserService())..loadUserData(),
           ),
         ],
         child: const MyApp(),

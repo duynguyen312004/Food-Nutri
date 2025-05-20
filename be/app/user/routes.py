@@ -153,7 +153,6 @@ def metrics():
         'calories_consumed': raw['calories_consumed'],
         'water_intake_ml': raw['water_intake_ml']
     }
-    print(">>> Metrics JSON for", for_date, ":", json.dumps(result))
     return jsonify(result), 200
 @user_bp.route('/goals', methods=['GET'])
 @firebase_required()

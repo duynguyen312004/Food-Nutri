@@ -12,7 +12,7 @@ class AddExercisePage extends StatefulWidget {
 class _AddExercisePageState extends State<AddExercisePage> {
   DateTime _selectedDateTime = DateTime.now();
   int _durationMin = 30;
-  final int _selectedTypeId = 20; // id exercise_type mặc định
+// id exercise_type mặc định
 
   void _pickDateTime() async {
     final date = await showDatePicker(
@@ -35,7 +35,6 @@ class _AddExercisePageState extends State<AddExercisePage> {
   }
 
   void _submit() {
-    // TODO: gọi LogService.addExercise(_selectedTypeId, _durationMin, _selectedDateTime)
     Navigator.pop(context, true);
   }
 
@@ -56,7 +55,6 @@ class _AddExercisePageState extends State<AddExercisePage> {
               onTap: _pickDateTime,
             ),
             const SizedBox(height: 16),
-            // TODO: dropdown chọn exercise type từ DB
             Row(
               children: [
                 const Text('Thời lượng (phút):'),
