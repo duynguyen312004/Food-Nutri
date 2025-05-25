@@ -1,3 +1,7 @@
+import '../../models/user_model.dart';
+import '../../models/goal_model.dart';
+import '../../models/user_settings.dart';
+
 abstract class UserDataState {}
 
 class UserDataInitial extends UserDataState {}
@@ -5,9 +9,9 @@ class UserDataInitial extends UserDataState {}
 class UserDataLoading extends UserDataState {}
 
 class UserDataLoaded extends UserDataState {
-  final Map<String, dynamic> profile;
-  final Map<String, dynamic> goal;
-  final Map<String, dynamic> settings;
+  final UserModel profile;
+  final GoalModel goal;
+  final UserSettings settings;
 
   UserDataLoaded({
     required this.profile,

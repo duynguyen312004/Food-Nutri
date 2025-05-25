@@ -35,8 +35,8 @@ void main() async {
           BlocProvider(create: (_) => RecentMealsCubit(LogService())),
           BlocProvider(create: (_) => FoodCubit()),
           BlocProvider(
-            create: (context) =>
-                JournalCubit(LogService(), context.read<FoodCubit>()),
+            create: (context) => JournalCubit(LogService(),
+                context.read<FoodCubit>(), context.read<MetricsCubit>()),
           ),
           BlocProvider(create: (_) => ExerciseCubit(ExerciseService())),
           BlocProvider(
@@ -59,8 +59,8 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF9B51E0), // tim nhạt như mẫu
-            secondary: Color(0xFFBB6BD9), // tím đậm cho accent
+            primary: Color(0xFF9B51E0),
+            secondary: Color(0xFFBB6BD9),
             background: Color(0xFF1E1E2F),
             surface: Color(0xFF2A2A3D),
             onPrimary: Colors.white,

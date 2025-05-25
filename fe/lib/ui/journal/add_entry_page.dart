@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lottie/lottie.dart';
 import 'package:nutrition_app/ui/journal/add_exercise_page.dart';
 import 'package:nutrition_app/ui/journal/add_meal_page.dart';
+import 'package:nutrition_app/utils/dialog_helper.dart';
 
 import '../../blocs/log/journal_cubit.dart';
+import '../../blocs/metrics/metrics_cubit.dart';
 
 class AddEntryPage extends StatelessWidget {
   final DateTime selectedDate;
@@ -35,15 +37,17 @@ class AddEntryPage extends StatelessWidget {
             icon: Icons.fastfood,
             label: 'Thêm bữa ăn',
             color: Colors.orangeAccent,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AddMealPage(
-                  selectedDate: selectedDate,
-                  selectedHour: selectedHour,
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddMealPage(
+                    selectedDate: selectedDate,
+                    selectedHour: selectedHour,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           _OptionTile(
@@ -57,10 +61,34 @@ class AddEntryPage extends StatelessWidget {
             icon: Icons.fitness_center,
             label: 'Thêm bài tập',
             color: Colors.redAccent,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddExercisePage()),
-            ),
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddExercisePage(
+                    selectedDate: selectedDate,
+                    selectedHour: selectedHour,
+                  ),
+                ),
+              );
+
+              if (result != null && result is Map) {
+                final typeId = result['typeId'] as int;
+                final duration = result['duration'] as int;
+                final timestamp = result['timestamp'] as DateTime;
+
+                if (!context.mounted) return;
+                await context.read<JournalCubit>().addExerciseLog(
+                      timestamp,
+                      exerciseTypeId: typeId,
+                      durationMin: duration,
+                    );
+                if (!context.mounted) return;
+
+                context.read<MetricsCubit>().loadMetricsForDate(timestamp);
+                showSuccessDialog(context, 'Đã thêm bài tập thành công!');
+              }
+            },
           ),
           const SizedBox(height: 40),
           Center(
@@ -153,33 +181,24 @@ class AddEntryPage extends StatelessWidget {
                               );
 
                               try {
-                                // Gọi Cubit để thêm nước
                                 await context
                                     .read<JournalCubit>()
                                     .addWaterLog(timestamp, ml);
                                 if (!context.mounted) return;
-                                Navigator.pop(context); // đóng popup
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        const Icon(Icons.check_circle,
-                                            color: Colors.white),
-                                        const SizedBox(width: 8),
-                                        Text('Đã thêm $ml ml nước'),
-                                      ],
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (e) {
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Lỗi khi thêm nước: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                showSuccessDialog(
+                                    context, 'Đã thêm $ml ml nước');
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  Future.delayed(
+                                      const Duration(milliseconds: 300), () {
+                                    if (context.mounted) {
+                                      showSuccessDialog(
+                                          context, 'Đã thêm $ml ml nước');
+                                    }
+                                  });
+                                }
                               }
                             }
                           : null,

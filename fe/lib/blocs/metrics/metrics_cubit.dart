@@ -5,6 +5,7 @@ import 'metrics_state.dart';
 
 class MetricsCubit extends Cubit<MetricsState> {
   final UserService _userService;
+
   MetricsCubit(this._userService) : super(MetricsInitial());
 
   /// Load metrics cho một ngày cụ thể
@@ -14,9 +15,13 @@ class MetricsCubit extends Cubit<MetricsState> {
       // Gọi API lấy dữ liệu theo ngày
       final metricsData = await _userService.getDailyMetrics(date);
 
-      emit(MetricsLoaded(metricsData));
+      emit(MetricsLoaded(metricsData, date));
     } catch (e) {
       emit(MetricsError('Không thể tải dữ liệu: \$e'));
     }
+  }
+
+  void clearMetricsData() {
+    emit(MetricsInitial());
   }
 }

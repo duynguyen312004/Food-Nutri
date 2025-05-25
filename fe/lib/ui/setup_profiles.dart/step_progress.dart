@@ -36,9 +36,9 @@ class ProgressStep extends StatelessWidget {
 
   // Static definitions of pace, icons, labels
   static const Map<String, double> _paceMap = {
-    'Thư giãn': 0.75,
-    'Ổn định': 1.25,
-    'Tăng cường': 2,
+    'Thư giãn': 0.5,
+    'Ổn định': 0.75,
+    'Tăng cường': 1,
   };
 
   static const List<Map<String, dynamic>> _definitions = [

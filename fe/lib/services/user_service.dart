@@ -3,12 +3,16 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
+import '../models/goal_model.dart';
+import '../models/user_model.dart';
+import '../models/user_settings.dart';
+
 class UserService {
   // ignore: unused_field
   static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/users';
 
   /// Lấy thông tin profile hiện tại
-  Future<Map<String, dynamic>> fetchProfile() async {
+  Future<UserModel> fetchProfile() async {
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
     final uri = Uri.parse('$_baseUrl/profile');
     final response = await http.get(
@@ -19,7 +23,8 @@ class UserService {
       },
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body);
+      return UserModel.fromJson(data);
     } else {
       throw Exception('Failed to fetch profile: ${response.statusCode}');
     }
@@ -65,7 +70,7 @@ class UserService {
   }
 
   //lấy Goal
-  Future<Map<String, dynamic>> fetchGoal() async {
+  Future<GoalModel> fetchGoal() async {
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
     final uri = Uri.parse('$_baseUrl/goals');
     final response = await http.get(
@@ -76,14 +81,15 @@ class UserService {
       },
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body);
+      return GoalModel.fromJson(data);
     } else {
       throw Exception('Failed to fetch goal: ${response.statusCode}');
     }
   }
 
   //lấy Settings
-  Future<Map<String, dynamic>> fetchSettings() async {
+  Future<UserSettings> fetchSettings() async {
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
     final uri = Uri.parse('$_baseUrl/settings');
     final response = await http.get(
@@ -94,7 +100,8 @@ class UserService {
       },
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body);
+      return UserSettings.fromJson(data);
     } else {
       throw Exception('Failed to fetch settings: ${response.statusCode}');
     }
@@ -116,6 +123,24 @@ class UserService {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to fetch metrics: ${response.statusCode}');
+    }
+  }
+
+  /// Xoá toàn bộ tài khoản người dùng (dữ liệu + user) từ backend
+  Future<void> deleteAccount() async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final uri = Uri.parse('$_baseUrl/delete_account');
+
+    final response = await http.delete(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (idToken != null) 'Authorization': 'Bearer $idToken',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete account: ${response.statusCode}');
     }
   }
 }

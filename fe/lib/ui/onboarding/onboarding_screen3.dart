@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,56 +13,60 @@ class OnboardingScreen3 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              const _PageIndicator(currentIndex: 2),
-              const SizedBox(height: 20),
-              _SkipRow(onSkip: () => _completeAndNavigate(context)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/onboarding.png',
-                    width: 500,
-                    height: 400,
-                    opacity: const AlwaysStoppedAnimation(.8),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'onboarding3'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: _buttonHeight,
-                child: ElevatedButton(
-                  onPressed: () => _completeAndNavigate(context),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    backgroundColor: Colors.lightGreenAccent,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(_borderRadius),
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const _PageIndicator(currentIndex: 2),
+                const SizedBox(height: 20),
+                _SkipRow(onSkip: () => _completeAndNavigate(context)),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/onboarding.png',
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      fit: BoxFit.contain,
+                      opacity: const AlwaysStoppedAnimation(.9),
                     ),
                   ),
-                  child: Text('Start'.tr()),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+                const Text(
+                  'Đặt mục tiêu, theo dõi tiến trình và hình thành thói quen lành mạnh suốt đời',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: _buttonHeight,
+                  child: ElevatedButton(
+                    onPressed: () => _completeAndNavigate(context),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      backgroundColor: Colors.lightGreenAccent,
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(_borderRadius),
+                      ),
+                    ),
+                    child: const Text('Bắt đầu'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -81,7 +84,7 @@ class OnboardingScreen3 extends StatelessWidget {
         ),
       );
     } catch (e) {
-      debugPrint('Error saving onboarding state: $e');
+      debugPrint('Error saving onboarding state: \$e');
     }
   }
 }
@@ -133,7 +136,10 @@ class _SkipRow extends StatelessWidget {
             side: BorderSide(color: Colors.purple.withOpacity(.75)),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
-          child: Text('Skip'.tr()),
+          child: const Text(
+            'Bỏ qua',
+            style: TextStyle(color: Colors.purple),
+          ),
         ),
       ],
     );

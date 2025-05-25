@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutrition_app/services/log_service.dart';
 
@@ -13,10 +12,6 @@ class RecentMealsCubit extends Cubit<RecentMealsState> {
     emit(RecentMealsLoading());
     try {
       final meals = await _logService.getRecentLogs(date);
-      debugPrint('[RecentMealsCubit] Fetched ${meals.length} meals:');
-      for (var m in meals) {
-        debugPrint('- ${m.name} | ${m.quantity}${m.unit} | ${m.calories} kcal');
-      }
 
       emit(RecentMealsLoaded(meals));
     } catch (e) {
@@ -30,5 +25,9 @@ class RecentMealsCubit extends Cubit<RecentMealsState> {
       meals.removeWhere((m) => m.foodItemId == foodItemId);
       emit(RecentMealsLoaded(meals));
     }
+  }
+
+  void clearRecentMeals() {
+    emit(RecentMealsInitial());
   }
 }

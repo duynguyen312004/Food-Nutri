@@ -6,7 +6,8 @@ class MetricsLoading extends MetricsState {}
 
 class MetricsLoaded extends MetricsState {
   final Map<String, dynamic> metrics;
-  MetricsLoaded(this.metrics);
+  final DateTime date;
+  MetricsLoaded(this.metrics, this.date);
 }
 
 class MetricsError extends MetricsState {

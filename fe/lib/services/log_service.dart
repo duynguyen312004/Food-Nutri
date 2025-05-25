@@ -151,4 +151,34 @@ class LogService {
       throw Exception('Ghi log món ăn thất bại: ${response.body}');
     }
   }
+
+  Future<void> addExerciseLog(
+      DateTime timestamp, int exerciseTypeId, int durationMin) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (idToken == null) {
+      throw Exception('Missing Firebase token');
+    }
+
+    final body = {
+      'type': 'exercise',
+      'timestamp': timestamp.toIso8601String(),
+      'data': {
+        'exercise_type_id': exerciseTypeId,
+        'duration_min': durationMin,
+      }
+    };
+
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Ghi log bài tập thất bại: ${response.body}');
+    }
+  }
 }

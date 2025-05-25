@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,6 +10,9 @@ class AuthService {
   final GoogleSignIn _google = GoogleSignIn();
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      // 👉 Thêm dòng này để xoá session, buộc hiện lại account picker
+      await _google.signOut();
+
       // Trigger the authentication flow
       final googleUser = await _google.signIn();
       if (googleUser == null) {
@@ -24,10 +29,8 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      // This token can be used to authenticate with your backend server
       return await _auth.signInWithCredential(credential);
     } catch (e) {
-      // ignore: avoid_print
       print("Error signing in with Google: $e");
       return null;
     }
@@ -58,7 +61,20 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _google.signOut();
-    await _auth.signOut();
+    try {
+      if (await _google.isSignedIn()) {
+        await _google.signOut(); // Chỉ logout, không revoke
+      }
+    } catch (e) {
+      print("Google signOut error: $e");
+    }
+
+    try {
+      // await FacebookAuth.instance.logOut();
+    } catch (e) {
+      print("Facebook logout error: $e");
+    }
+
+    await _auth.signOut(); // Firebase logout
   }
 }

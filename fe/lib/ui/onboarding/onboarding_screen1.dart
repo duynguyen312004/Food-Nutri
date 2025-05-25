@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,61 +14,64 @@ class OnboardingScreen1 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              const _PageIndicator(currentIndex: 0),
-              const SizedBox(height: 20),
-              _SkipRow(onSkip: () => _completeAndNavigate(context)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/onboarding.png',
-                    width: 500,
-                    height: 400,
-                    opacity: const AlwaysStoppedAnimation(.8),
-                    fit: BoxFit.cover,
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const _PageIndicator(currentIndex: 0),
+                const SizedBox(height: 20),
+                _SkipRow(onSkip: () => _completeAndNavigate(context)),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/onboarding.png',
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      fit: BoxFit.contain,
+                      opacity: const AlwaysStoppedAnimation(.9),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'onboarding1'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: _buttonHeight,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const OnboardingScreen2(),
-                    ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Chào mừng đến với Food Nutri – công cụ theo dõi dinh dưỡng và lập kế hoạch bữa ăn cho riêng bạn',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    backgroundColor: Colors.lightGreenAccent,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(_borderRadius),
-                    ),
-                  ),
-                  child: Text('Next'.tr()),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: _buttonHeight,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const OnboardingScreen2()),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      backgroundColor: Colors.lightGreenAccent,
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(_borderRadius),
+                      ),
+                    ),
+                    child: const Text('Tiếp theo'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -87,7 +89,7 @@ class OnboardingScreen1 extends StatelessWidget {
         ),
       );
     } catch (e) {
-      debugPrint('Error saving onboarding state: $e');
+      debugPrint('Error saving onboarding state: \$e');
     }
   }
 }
@@ -141,7 +143,10 @@ class _SkipRow extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
-          child: Text('Skip'.tr()),
+          child: const Text(
+            'Bỏ qua',
+            style: TextStyle(color: Colors.purple),
+          ),
         ),
       ],
     );

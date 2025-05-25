@@ -1,7 +1,7 @@
 from flask import Blueprint, json, request, jsonify, g
 from sqlalchemy import func
 from auth.decorators import firebase_required
-from user.services import complete_initial_setup, upsert_profile, upsert_settings, compute_user_metrics
+from user.services import complete_initial_setup, delete_user_account, upsert_profile, upsert_settings, compute_user_metrics
 from user.models import User, UserProfile, UserSettings, WeightLog, Goal
 from datetime import datetime, date as DateType
 
@@ -10,19 +10,35 @@ user_bp = Blueprint('user', __name__, url_prefix='/api/v1/users')
 @user_bp.route('/profile', methods=['GET', 'PUT'])
 @firebase_required()
 def profile():
-    """
-    GET: Lấy thông tin người dùng
-    PUT: Cập nhật thông tin người dùng
-    """
     uid = g.current_user.user_id
     if request.method == 'GET':
+        user = User.query.get(uid)
         prof = UserProfile.query.get(uid)
+        
+        # Cân nặng bắt đầu: log sớm nhất
+        start_weight = (WeightLog.query
+                        .filter_by(user_id=uid)
+                        .order_by(WeightLog.logged_at.asc())
+                        .first())
+
+        # Cân nặng mục tiêu: từ goal hiện tại
+        goal = (Goal.query
+                .filter_by(user_id=uid)
+                .order_by(Goal.created_at.desc())
+                .first())
+
         return jsonify({
+            'uid': uid,
+            'email': user.email,
+            'displayName': user.display_name,
+            'photoUrl': user.avatar_url,
             'first_name': prof.first_name if prof else None,
             'last_name': prof.last_name if prof else None,
             'date_of_birth': prof.date_of_birth.isoformat() if prof and prof.date_of_birth else None,
             'gender': prof.gender if prof else None,
-            'height_cm': float(prof.height_cm) if prof and prof.height_cm else None
+            'height_cm': float(prof.height_cm) if prof and prof.height_cm else None,
+            'startingWeight': float(start_weight.weight_kg) if start_weight else None,
+            'targetWeight': float(goal.target_value) if goal else None
         }), 200
 
     # PUT
@@ -35,6 +51,7 @@ def profile():
         'gender': prof.gender,
         'height_cm': float(prof.height_cm) if prof.height_cm else None
     }), 201
+
 
 @user_bp.route('/settings', methods=['GET', 'PUT'])
 @firebase_required()
@@ -58,6 +75,8 @@ def settings():
         'locale', 'timezone', 'weight_unit', 'energy_unit',
         'default_target_calories', 'drink_water_reminder', 'meal_reminder'
     ) }), 201
+
+
 @user_bp.route('/setup', methods=['POST'])
 @firebase_required()
 def setup():
@@ -154,6 +173,8 @@ def metrics():
         'water_intake_ml': raw['water_intake_ml']
     }
     return jsonify(result), 200
+
+
 @user_bp.route('/goals', methods=['GET'])
 @firebase_required()
 def goals():
@@ -173,3 +194,13 @@ def goals():
         'weekly_rate':   float(goal.weekly_rate),
         'start_date':    goal.start_date.isoformat(),
     }), 200
+
+@user_bp.route('/delete_account', methods=['DELETE'])
+@firebase_required()
+def delete_account():
+    uid = g.current_user.user_id
+    try:
+        delete_user_account(uid)
+        return jsonify({'message': 'Tài khoản đã được xoá'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

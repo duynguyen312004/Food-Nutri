@@ -11,18 +11,34 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedWeekday = DateTime.now().weekday % 7; // 0: CN ... 6: T7
+class _HomePageState extends State<HomePage>
+    with AutomaticKeepAliveClientMixin {
+  late DateTime _today;
+  late int _todayIndex;
+  int _selectedWeekday = 0;
 
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now();
-    context.read<MetricsCubit>().loadMetricsForDate(today);
+    _today = DateTime.now();
+    _todayIndex = _today.weekday % 7;
+    _selectedWeekday = _todayIndex;
+
+    // Không gọi nếu đã preload trong MainScreen
+    final currentState = context.read<MetricsCubit>().state;
+    if (currentState is! MetricsLoaded ||
+        !_isSameDate(currentState.date, _today)) {
+      context.read<MetricsCubit>().loadMetricsForDate(_today);
+    }
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Quan trọng với KeepAlive
     return Scaffold(
       body: SafeArea(
         child: BlocBuilder<MetricsCubit, MetricsState>(
@@ -31,21 +47,25 @@ class _HomePageState extends State<HomePage> {
               return const Center(child: CircularProgressIndicator());
             } else if (state is MetricsError) {
               return Center(child: Text(state.message));
+            } else if (state is MetricsLoaded) {
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildHeader(context)),
+                  SliverToBoxAdapter(child: _buildCalorieCard(state)),
+                  SliverToBoxAdapter(child: _buildMacroPager(state)),
+                ],
+              );
+            } else {
+              return const SizedBox(); // fallback
             }
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildHeader(context)),
-                SliverToBoxAdapter(
-                    child: _buildCalorieCard(state as MetricsLoaded)),
-                SliverToBoxAdapter(child: _buildMacroPager(state)),
-              ],
-            );
           },
         ),
       ),
     );
   }
 
+  @override
+  bool get wantKeepAlive => true;
   Widget _buildHeader(BuildContext context) {
     final days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     final todayIndex = DateTime.now().weekday % 7;

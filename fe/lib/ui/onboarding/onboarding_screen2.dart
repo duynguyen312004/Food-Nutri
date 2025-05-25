@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,80 +14,88 @@ class OnboardingScreen2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              const _PageIndicator(currentIndex: 1),
-              const SizedBox(height: 20),
-              _SkipRow(onSkip: () => _completeAndNavigate(context)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/onboarding.png',
-                    width: 500,
-                    height: 400,
-                    opacity: const AlwaysStoppedAnimation(.8),
-                    fit: BoxFit.cover,
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const _PageIndicator(currentIndex: 1),
+                const SizedBox(height: 20),
+                _SkipRow(onSkip: () => _completeAndNavigate(context)),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/onboarding.png',
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      fit: BoxFit.contain,
+                      opacity: const AlwaysStoppedAnimation(.9),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'onboarding2'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 120,
-                    height: _buttonHeight,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.black.withOpacity(.75),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(_borderRadius),
-                        ),
-                      ),
-                      child: Text('Back'.tr()),
-                    ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Ghi lại bữa ăn thật đơn giản và nhận ngay phân tích về calo, chất đa lượng và các vi chất quan trọng',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 120,
-                    height: _buttonHeight,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const OnboardingScreen3(),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: _buttonHeight,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black.withOpacity(.75),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(_borderRadius),
+                            ),
+                          ),
+                          child: const Text('Quay lại'),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        backgroundColor: Colors.lightGreenAccent,
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(_borderRadius),
-                        ),
-                      ),
-                      child: Text('Next'.tr()),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: _buttonHeight,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const OnboardingScreen3(),
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.lightGreenAccent,
+                            elevation: 5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(_borderRadius),
+                            ),
+                          ),
+                          child: const Text('Tiếp theo'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -106,7 +113,7 @@ class OnboardingScreen2 extends StatelessWidget {
         ),
       );
     } catch (e) {
-      debugPrint('Error saving onboarding state: $e');
+      debugPrint('Error saving onboarding state: \$e');
     }
   }
 }
@@ -158,7 +165,10 @@ class _SkipRow extends StatelessWidget {
             side: BorderSide(color: Colors.purple.withOpacity(.75)),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
-          child: Text('Skip'.tr()),
+          child: const Text(
+            'Bỏ qua',
+            style: TextStyle(color: Colors.purple),
+          ),
         ),
       ],
     );

@@ -23,4 +23,26 @@ class UserDataCubit extends Cubit<UserDataState> {
       emit(UserDataError(e.toString()));
     }
   }
+
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    emit(UserDataLoading());
+    try {
+      await _userService.updateProfile(data);
+      final updated = await _userService.fetchProfile();
+      final goal = await _userService.fetchGoal();
+      final settings = await _userService.fetchSettings();
+
+      emit(UserDataLoaded(
+        profile: updated,
+        goal: goal,
+        settings: settings,
+      ));
+    } catch (e) {
+      emit(UserDataError(e.toString()));
+    }
+  }
+
+  void clearUserData() {
+    emit(UserDataInitial());
+  }
 }

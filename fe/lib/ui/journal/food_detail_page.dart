@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pie_chart/pie_chart.dart';
@@ -6,12 +8,13 @@ import '../../blocs/food/food_cubit.dart';
 import '../../blocs/food/food_state.dart';
 import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
+import 'package:nutrition_app/utils/dialog_helper.dart';
 
 class FoodDetailPage extends StatefulWidget {
-  final int foodId;
-  final double initialQuantity;
-  final bool isEditing;
-  final DateTime? timestamp;
+  final int foodId; // ID của món ăn
+  final double initialQuantity; // Lượng khẩu phần ban đầu (gram)
+  final bool isEditing; // Có đang ở chế độ chỉnh sửa log hay không
+  final DateTime? timestamp; // Thời điểm log món ăn (chỉ cần nếu là edit)
 
   const FoodDetailPage({
     super.key,
@@ -26,15 +29,18 @@ class FoodDetailPage extends StatefulWidget {
 }
 
 class _FoodDetailPageState extends State<FoodDetailPage> {
-  late double _quantity;
-  bool _showMore = false;
-  late final TextEditingController _controller;
+  late double _quantity; // Biến lưu lượng khẩu phần hiện tại
+  bool _showMore = false; // Cờ để ẩn/hiện dinh dưỡng chi tiết
+  late final TextEditingController
+      _controller; // Điều khiển TextField nhập khẩu phần
 
   @override
   void initState() {
     super.initState();
     _quantity = widget.initialQuantity;
     _controller = TextEditingController(text: _quantity.toStringAsFixed(1));
+
+    // Nếu chưa load hoặc foodId khác thì gọi load lại
     final state = context.read<FoodCubit>().state;
     if (state is! FoodLoaded || state.food.foodItemId != widget.foodId) {
       context.read<FoodCubit>().loadFoodDetail(widget.foodId);
@@ -45,6 +51,25 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Tính toán lại dinh dưỡng dựa trên khẩu phần hiện tại
+  Map<String, dynamic> _calculateNutrition(food, double quantity) {
+    final factor = quantity / food.servingSize;
+    final pro = food.protein * factor;
+    final carb = food.carbs * factor;
+    final fat = food.fat * factor;
+    final cal = (food.calories * factor).round();
+    final total = pro + carb + fat;
+    return {
+      'cal': cal,
+      'pro': pro,
+      'carb': carb,
+      'fat': fat,
+      'proPct': total == 0 ? 0 : ((pro / total) * 100).round(),
+      'carbPct': total == 0 ? 0 : ((carb / total) * 100).round(),
+      'fatPct': total == 0 ? 0 : ((fat / total) * 100).round(),
+    };
   }
 
   @override
@@ -63,23 +88,15 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
             return const Center(child: CircularProgressIndicator());
           } else if (state is FoodLoaded) {
             final food = state.food;
-            final factor = _quantity / food.servingSize;
-
-            final cal = (food.calories * factor).round();
-            final pro = (food.protein * factor);
-            final carb = (food.carbs * factor);
-            final fat = (food.fat * factor);
-
-            final total = pro + carb + fat;
-            final proPct = ((pro / total) * 100).round();
-            final carbPct = ((carb / total) * 100).round();
-            final fatPct = ((fat / total) * 100).round();
+            final nutri = _calculateNutrition(food, _quantity);
 
             return Stack(
               children: [
+                // Nội dung chính: ảnh, thông tin, macro chart, bảng dinh dưỡng
                 ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 180),
                   children: [
+                    // Ảnh món ăn
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: food.imageUrl != null
@@ -89,6 +106,8 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                               height: 160, fit: BoxFit.cover),
                     ),
                     const SizedBox(height: 16),
+
+                    // Tên món ăn
                     Center(
                       child: Text(
                         food.name,
@@ -99,6 +118,8 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Vòng tròn calories + tỷ lệ macro
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -106,7 +127,11 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                           alignment: Alignment.center,
                           children: [
                             PieChart(
-                              dataMap: {'Đạm': pro, 'Carb': carb, 'Béo': fat},
+                              dataMap: {
+                                'Đạm': nutri['pro'],
+                                'Carb': nutri['carb'],
+                                'Béo': nutri['fat']
+                              },
                               colorList: const [
                                 Colors.red,
                                 Colors.blue,
@@ -123,7 +148,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                             ),
                             Column(
                               children: [
-                                Text('$cal',
+                                Text('${nutri['cal']}',
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 16,
@@ -135,15 +160,22 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                             )
                           ],
                         ),
-                        _macroColumn(proPct, pro, 'assets/icons/proteins.png',
-                            'Chất đạm', Colors.red),
-                        _macroColumn(carbPct, carb, 'assets/icons/carb.png',
-                            'Đường bột', Colors.blue),
-                        _macroColumn(fatPct, fat, 'assets/icons/fat.png',
-                            'Chất béo', Colors.orange),
+                        _macroColumn(
+                            nutri['proPct'],
+                            nutri['pro'],
+                            'assets/icons/proteins.png',
+                            'Chất đạm',
+                            Colors.red),
+                        _macroColumn(nutri['carbPct'], nutri['carb'],
+                            'assets/icons/carb.png', 'Đường bột', Colors.blue),
+                        _macroColumn(nutri['fatPct'], nutri['fat'],
+                            'assets/icons/fat.png', 'Chất béo', Colors.orange),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
+                    // Cảnh báo món custom chưa xác nhận
                     if (food.isCustom == true)
                       const Padding(
                         padding: EdgeInsets.only(top: 12.0),
@@ -162,19 +194,21 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                           ],
                         ),
                       ),
+
                     const SizedBox(height: 24),
                     const Text('Giá trị dinh dưỡng',
                         style: TextStyle(
                             color: Colors.white70,
                             fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
-                    _nutrientRow('Năng lượng', '$cal kcal'),
-                    _nutrientRow(
-                        'Đường bột (carb)', '${carb.toStringAsFixed(1)} g'),
-                    _nutrientRow(
-                        'Chất béo (fat)', '${fat.toStringAsFixed(1)} g'),
-                    _nutrientRow(
-                        'Chất đạm (protein)', '${pro.toStringAsFixed(1)} g'),
+                    _nutrientRow('Năng lượng', '${nutri['cal']} kcal'),
+                    _nutrientRow('Đường bột (carb)',
+                        '${nutri['carb'].toStringAsFixed(1)} g'),
+                    _nutrientRow('Chất béo (fat)',
+                        '${nutri['fat'].toStringAsFixed(1)} g'),
+                    _nutrientRow('Chất đạm (protein)',
+                        '${nutri['pro'].toStringAsFixed(1)} g'),
+
                     if (_showMore) ...[
                       const SizedBox(height: 8),
                       _nutrientRow('Chất xơ', '0.5 g'),
@@ -197,6 +231,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                         ],
                       ),
                     ],
+
                     TextButton(
                       onPressed: () => setState(() => _showMore = !_showMore),
                       child: Text(_showMore ? 'Ẩn bớt' : 'Xem thêm',
@@ -204,6 +239,8 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                     ),
                   ],
                 ),
+
+                // Bottom bar nhập khẩu phần và nút Thêm/Cập nhật
                 Positioned(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
                   left: 0,
@@ -219,6 +256,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     );
   }
 
+  /// Widget thanh đáy màn hình chứa TextField nhập gram + nút hành động
   Widget _buildBottomBar(BuildContext context, dynamic food) {
     final unit = food.servingUnit;
     return Container(
@@ -258,8 +296,14 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
             ),
             onPressed: () async {
               if (widget.isEditing) {
+                // Nếu đang chỉnh sửa, chỉ cần pop quantity về lại JournalPage để xử lý tiếp
+                if (!context.mounted) return;
+                showSuccessDialog(context, 'Đã cập nhật khẩu phần!');
+                await Future.delayed(const Duration(seconds: 1));
+                if (!context.mounted) return;
                 Navigator.pop(context, _quantity);
               } else {
+                // Nếu là thêm mới món ăn
                 final timestamp = widget.timestamp ?? DateTime.now();
                 String getMealName(DateTime time) {
                   final h = time.hour;
@@ -277,16 +321,10 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                       mealName: getMealName(timestamp),
                     );
                 if (!context.mounted) return;
-
-                // Gọi để cập nhật lại phần header (TDEE, macro, calorie đã nạp...)
                 context.read<MetricsCubit>().loadMetricsForDate(timestamp);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã thêm món vào nhật ký'),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                showSuccessDialog(context, 'Đã thêm món ăn!');
+                await Future.delayed(const Duration(seconds: 1));
+                if (!context.mounted) return;
                 Navigator.pop(context, true);
               }
             },
@@ -297,6 +335,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     );
   }
 
+  /// Cột hiển thị phần trăm + số gram + icon macro
   Widget _macroColumn(
       int percent, double value, String iconPath, String label, Color color) {
     return Column(
@@ -319,6 +358,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     );
   }
 
+  /// Từng dòng thể hiện thành phần dinh dưỡng (label + value)
   Widget _nutrientRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

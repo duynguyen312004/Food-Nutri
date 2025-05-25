@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/food/food_cubit.dart';
-import '../../blocs/food/food_state.dart';
 import '../../blocs/recent_log/recent_meals_cubit.dart';
 import '../../blocs/recent_log/recent_meals_state.dart';
+import '../../blocs/log/journal_cubit.dart';
+import '../../blocs/metrics/metrics_cubit.dart';
 import 'food_detail_page.dart';
 
+/// Trang thêm món ăn vào nhật ký tại một khung giờ cụ thể trong ngày.
+/// Bao gồm các tab như: Gần đây, Tạo bởi tôi, Yêu thích, Thực đơn.
 class AddMealPage extends StatefulWidget {
   final DateTime selectedDate;
   final int selectedHour;
@@ -28,13 +31,16 @@ class _AddMealPageState extends State<AddMealPage> {
   @override
   void initState() {
     super.initState();
-    context.read<RecentMealsCubit>().loadRecentMeals(widget.selectedDate);
+    final state = context.read<RecentMealsCubit>().state;
+    if (state is! RecentMealsLoaded) {
+      context.read<RecentMealsCubit>().loadRecentMeals(widget.selectedDate);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final timeRange = '${widget.selectedHour.toString().padLeft(2, '0')}:00'
-        ' - ${(widget.selectedHour + 1).toString().padLeft(2, '0')}:00';
+    final timeRange =
+        '${widget.selectedHour.toString().padLeft(2, '0')}:00 - ${(widget.selectedHour + 1).toString().padLeft(2, '0')}:00';
 
     return Scaffold(
       appBar: AppBar(
@@ -52,6 +58,7 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
+  /// Thanh tìm kiếm món ăn
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -74,6 +81,7 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
+  /// Thanh tab chuyển giữa các chế độ xem món ăn
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -113,6 +121,7 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
+  /// Các tùy chọn thêm món nhanh bằng mã vạch, camera, giọng nói
   Widget _buildAddOptionsRow() {
     final options = [
       {'label': 'Mã vạch', 'image': 'assets/icons/qr_scan.png'},
@@ -148,6 +157,7 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
+  /// Nội dung theo từng tab, hiện tại chỉ xử lý tab Gần đây
   Widget _buildTabContent() {
     switch (_selectedTabIndex) {
       case 0:
@@ -167,83 +177,43 @@ class _AddMealPageState extends State<AddMealPage> {
                   final meal = meals[index - 1];
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Dismissible(
-                      key: ValueKey(meal.name +
-                          meal.createdAt.toString()), // key phải là duy nhất
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        padding: const EdgeInsets.only(right: 20),
-                        alignment: Alignment.centerRight,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      onDismissed: (direction) {
-                        context
-                            .read<RecentMealsCubit>()
-                            .removeMealFromUI(meal.foodItemId);
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Đã xoá món "${meal.name}" khỏi danh sách gần đây'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Colors.redAccent,
+                    child: MealCard(
+                      name: meal.name,
+                      quantity: meal.quantity,
+                      unit: meal.unit,
+                      calories: meal.calories.toInt(),
+                      protein: meal.protein,
+                      carbs: meal.carbs,
+                      fat: meal.fat,
+                      imagePath: meal.imageUrl ??
+                          'assets/images/suon-nuong-mat-ong.png',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MultiBlocProvider(
+                              providers: [
+                                BlocProvider.value(
+                                    value: context.read<FoodCubit>()),
+                                BlocProvider.value(
+                                    value: context.read<JournalCubit>()),
+                                BlocProvider.value(
+                                    value: context.read<MetricsCubit>()),
+                              ],
+                              child: FoodDetailPage(
+                                foodId: meal.foodItemId,
+                                initialQuantity: meal.quantity,
+                                timestamp: DateTime(
+                                  widget.selectedDate.year,
+                                  widget.selectedDate.month,
+                                  widget.selectedDate.day,
+                                  widget.selectedHour,
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       },
-                      child: MealCard(
-                          name: meal.name,
-                          quantity: meal.quantity,
-                          unit: meal.unit,
-                          calories: meal.calories.toInt(),
-                          protein: meal.protein,
-                          carbs: meal.carbs,
-                          fat: meal.fat,
-                          imagePath: meal.imageUrl ??
-                              'assets/images/suon-nuong-mat-ong.png',
-                          onTap: () async {
-                            final grams = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider.value(
-                                  value: context.read<FoodCubit>(),
-                                  child: FoodDetailPage(
-                                    foodId: meal.foodItemId,
-                                    initialQuantity: meal.quantity,
-                                    timestamp: DateTime(
-                                      widget.selectedDate.year,
-                                      widget.selectedDate.month,
-                                      widget.selectedDate.day,
-                                      widget.selectedHour,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-
-                            if (grams != null && grams is double) {
-                              if (!context.mounted) return;
-                              final state = context.read<FoodCubit>().state;
-                              if (state is FoodLoaded) {
-                                final food = state.food;
-
-                                if (food.servingUnit != meal.unit) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Đơn vị không khớp. Không thể log lại món ăn này.'),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                  return;
-                                }
-                              }
-                            }
-                          }),
                     ),
                   );
                 },
@@ -261,6 +231,7 @@ class _AddMealPageState extends State<AddMealPage> {
   }
 }
 
+/// Thẻ hiển thị món ăn với tên, macros và hình ảnh
 class MealCard extends StatelessWidget {
   final String name;
   final int calories;

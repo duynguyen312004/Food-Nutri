@@ -1,11 +1,5 @@
-// ignore_for_file: unused_import
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nutrition_app/ui/setup_profiles.dart/loading_setup_screen.dart';
-import '../../services/user_service.dart';
-import '../home/home_page.dart';
-import '../welcome/welcome_page.dart';
 import 'step_name.dart';
 import 'step_goal.dart';
 import 'step_gender.dart';
@@ -25,13 +19,13 @@ class ProfileSetupScreen extends StatefulWidget {
 class ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final PageController _pageController = PageController();
 
-  // Shared form/state fields
   final _formKeyName = GlobalKey<FormState>();
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _heightController = TextEditingController();
   final _currentWeightController = TextEditingController();
   final _targetWeightController = TextEditingController();
+
   String? _selectedGoal;
   String? _selectedGender;
   DateTime? _selectedDob;
@@ -42,14 +36,12 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   bool _isLoading = false;
 
-  // Pace mapping: kg to change per week
   static const Map<String, double> _paceMap = {
     'Thư giãn': 0.5,
     'Ổn định': 0.75,
     'Tăng cường': 1,
   };
 
-  // Definitions for progress plans (difficulty, icon, color)
   @override
   void dispose() {
     _pageController.dispose();
@@ -75,8 +67,20 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   void _onNext() {
     final idx = (_pageController.page ?? 0).toInt();
+
     if (idx == 0 && !(_formKeyName.currentState?.validate() ?? false)) return;
+    if (idx == 1 && _selectedGoal == null) return;
+    if (idx == 2 && _selectedGender == null) return;
     if (idx == 3 && _selectedDob == null) return;
+    if (idx == 4 &&
+        (_heightCm ?? double.tryParse(_heightController.text)) == null) return;
+    if (idx == 5 &&
+        (_currentWeight ?? double.tryParse(_currentWeightController.text)) ==
+            null) return;
+    if (idx == 6 &&
+        (_targetWeight ?? double.tryParse(_targetWeightController.text)) ==
+            null) return;
+    if (idx == 7 && _progressPlan == null) return;
 
     if (idx < 7) {
       _pageController.nextPage(
@@ -91,12 +95,17 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _submitProfile() async {
     setState(() => _isLoading = true);
 
-    // Compute duration based on weight difference and pace
+    final parsedHeight = _heightCm ?? double.tryParse(_heightController.text);
+    final parsedCurrentWeight =
+        _currentWeight ?? double.tryParse(_currentWeightController.text);
+    final parsedTargetWeight =
+        _targetWeight ?? double.tryParse(_targetWeightController.text);
+
     int durationWeeks = 4;
-    if (_currentWeight != null &&
-        _targetWeight != null &&
+    if (parsedCurrentWeight != null &&
+        parsedTargetWeight != null &&
         _progressPlan != null) {
-      final diff = (_currentWeight! - _targetWeight!).abs();
+      final diff = (parsedCurrentWeight - parsedTargetWeight).abs();
       final pace = _paceMap[_progressPlan!] ?? 1;
       if (pace > 0) durationWeeks = (diff / pace).ceil();
     }
@@ -106,9 +115,9 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
       'last_name': _lastNameController.text.trim(),
       'date_of_birth': _selectedDob?.toIso8601String(),
       'gender': _selectedGender,
-      'height_cm': _heightCm,
-      'current_weight_kg': _currentWeight,
-      'target_weight_kg': _targetWeight,
+      'height_cm': parsedHeight,
+      'current_weight_kg': parsedCurrentWeight,
+      'target_weight_kg': parsedTargetWeight,
       'goal_direction': _selectedGoal?.toLowerCase(),
       'duration_weeks': durationWeeks,
       'weekly_rate': _paceMap[_progressPlan],
@@ -134,6 +143,7 @@ class ProfileSetupScreenState extends State<ProfileSetupScreen> {
             _buildHeader(idx.toInt()),
             Expanded(
               child: PageView(
+                key: const PageStorageKey('profile_setup_pageview'),
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [

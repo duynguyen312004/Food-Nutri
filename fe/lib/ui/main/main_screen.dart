@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-
 import '../home/home_page.dart';
 import '../journal/journal_page.dart';
 import '../plans/plans_page.dart';
 import '../profile/profile_page.dart';
 
-/// MainScreen holds bottom navigation with a center FAB and switches between feature pages
-/// kèm hiệu ứng chuyển màn AnimatedSwitcher
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -15,7 +12,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class MainScreenState extends State<MainScreen> {
-  /// 0: Home, 1: Journal, 2: Plans, 3: Profile
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
@@ -37,37 +33,36 @@ class MainScreenState extends State<MainScreen> {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (child, animation) {
-          // Kết hợp Fade + Slide animation
-          final offsetAnimation = Tween<Offset>(
-            begin: const Offset(0.0, 0.1),
-            end: Offset.zero,
-          ).animate(animation);
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            ),
-          );
-        },
-        child: KeyedSubtree(
-          // mỗi màn phải có Key để AnimatedSwitcher nhận diện
-          key: ValueKey<int>(_currentIndex),
-          child: _pages[_currentIndex],
-        ),
+      resizeToAvoidBottomInset: false,
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: primary,
-        child: const Icon(Icons.add, size: 32),
+      floatingActionButton: Container(
+        height: 56,
+        width: 56,
+        decoration: BoxDecoration(
+          color: primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: primary.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: RawMaterialButton(
+          shape: const CircleBorder(),
+          onPressed: () {},
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
+        notchMargin: 6.0,
         child: SizedBox(
           height: 60,
           child: Row(
@@ -89,8 +84,7 @@ class MainScreenState extends State<MainScreen> {
                 onTap: () => _onTabSelected(1),
                 activeColor: primary,
               ),
-              // Spacer for FAB
-              const SizedBox(width: 48),
+              const SizedBox(width: 48), // Khoảng trống cho FAB
               _buildTabItem(
                 icon: Icons.list_alt,
                 label: 'Thực đơn',

@@ -8,8 +8,9 @@ class JournalLoading extends JournalState {}
 
 class JournalLoaded extends JournalState {
   final List<LogEntry> logs;
+  final DateTime date;
 
-  JournalLoaded(this.logs);
+  JournalLoaded(this.logs, this.date);
 }
 
 class JournalError extends JournalState {

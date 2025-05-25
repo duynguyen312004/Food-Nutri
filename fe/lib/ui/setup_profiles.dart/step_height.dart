@@ -42,10 +42,13 @@ class HeightStep extends StatelessWidget {
           const SizedBox(height: 32),
           TextField(
             controller: controller,
+            style: const TextStyle(color: Colors.black),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              hintText: 'Ví dụ: 170',
+              hintText: '170',
+              hintStyle: TextStyle(color: Colors.grey[500]),
               suffixText: 'cm',
+              suffixStyle: const TextStyle(color: Colors.black),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(

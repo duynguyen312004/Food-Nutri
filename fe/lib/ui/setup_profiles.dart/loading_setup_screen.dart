@@ -1,6 +1,6 @@
-// lib/ui/setup_profiles/loading_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:nutrition_app/ui/main/main_screen.dart';
+import '../../services/user_service.dart';
 import '../welcome/welcome_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -24,18 +24,18 @@ class _LoadingSetupScreenState extends State<LoadingSetupScreen> {
 
   Future<void> _doSetup() async {
     try {
-      // đảm bảo có user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Chưa login');
-      // gọi API
-      // sang HomePage
+
+      // ✅ Gọi service đã có sẵn
+      await UserService().initialSetup(widget.data);
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
     } catch (e) {
-      // nếu lỗi, đẩy về WelcomePage
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

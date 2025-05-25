@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
-from sqlalchemy import desc, func
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
 from extensions import db
 from meal.models import MealEntry, Meal
 from exercise.models import ExerciseLog, ExerciseType
@@ -8,21 +9,37 @@ from water.models  import  WaterLog
 
 def get_recent_logs_for_user(user_id, target_date):
     """
-    Trả về danh sách các món ăn (meal entries) user đã log trong 2 ngày gần nhất,
-    giới hạn 6 món gần nhất theo thời gian tạo.
+    Trả về danh sách các món ăn gần đây (tối đa 6), mỗi món là một food_item_id khác nhau,
+    dựa trên bản ghi MealEntry gần nhất theo created_at.
     """
     start_date = target_date - timedelta(days=1)
 
-    recent_meal = (
-        db.session.query(MealEntry, Meal, FoodItem)
+    subquery = (
+        db.session.query(
+            MealEntry.food_item_id,
+            func.max(MealEntry.created_at).label("latest_time")
+        )
         .join(Meal, MealEntry.meal_id == Meal.meal_id)
-        .join(FoodItem, MealEntry.food_item_id == FoodItem.food_item_id)
         .filter(
             Meal.user_id == user_id,
             func.date(MealEntry.created_at) >= start_date,
             func.date(MealEntry.created_at) <= target_date,
         )
-        .order_by(desc(MealEntry.created_at))
+        .group_by(MealEntry.food_item_id)
+        .subquery()
+    )
+
+    MealEntryAlias = aliased(MealEntry)
+
+    recent_meal = (
+        db.session.query(MealEntryAlias, Meal, FoodItem)
+        .join(Meal, MealEntryAlias.meal_id == Meal.meal_id)
+        .join(FoodItem, MealEntryAlias.food_item_id == FoodItem.food_item_id)
+        .join(subquery, db.and_(
+            MealEntryAlias.food_item_id == subquery.c.food_item_id,
+            MealEntryAlias.created_at == subquery.c.latest_time
+        ))
+        .order_by(subquery.c.latest_time.desc())
         .limit(6)
         .all()
     )
@@ -48,7 +65,6 @@ def get_recent_logs_for_user(user_id, target_date):
     ]
 
     return meals_data
-
 def get_aggregated_logs(user_id: int, query_date: date) -> list[dict]:
     """Trả về tất cả log trong ngày cụ thể: món ăn, nước, bài tập. Dùng để hiển thị Timeline trong JournalPage."""
     start = datetime.combine(query_date, datetime.min.time())
@@ -225,6 +241,7 @@ def update_meal_quantity(log_id: int, quantity: float, user_id: int):
         .first()
     )
     if entry:
+        print("Before update:", entry.quantity, entry.calories)
         food = FoodItem.query.get(entry.food_item_id)
         factor = float(quantity) / float(food.serving_size)
         entry.quantity = quantity
@@ -232,3 +249,4 @@ def update_meal_quantity(log_id: int, quantity: float, user_id: int):
         entry.protein_g = float(food.protein_g) * factor
         entry.carbs_g = float(food.carbs_g) * factor
         entry.fat_g = float(food.fat_g) * factor
+        print("After update:", entry.quantity, entry.calories)

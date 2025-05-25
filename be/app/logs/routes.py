@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, g
 from auth.decorators import firebase_required
-from logs.services import create_exercise_log, create_meal_log, create_water_log, get_aggregated_logs, get_recent_logs_for_user, delete_meal_log, delete_water_log, delete_exercise_log
+from logs.services import create_exercise_log, create_meal_log, create_water_log, get_aggregated_logs, get_recent_logs_for_user, delete_meal_log, delete_water_log, delete_exercise_log, update_meal_quantity
 from datetime import datetime, date
 from extensions import db
 
@@ -127,8 +127,8 @@ def update_meal_log(log_id):
     try:
         timestamp = datetime.fromisoformat(timestamp_str)
         user_id = g.current_user.user_id
+        print(f"Updating log {log_id} to {quantity} at {timestamp} for user {user_id}")
 
-        from logs.services import update_meal_quantity
         update_meal_quantity(log_id, quantity, user_id)
 
         db.session.commit()

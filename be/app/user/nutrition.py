@@ -38,29 +38,35 @@ def calculate_tdee(bmr: float, sessions_per_week: int) -> int:
     """Calculate Total Daily Energy Expenditure (TDEE)."""
     return round(bmr * activity_factor_from_sessions(sessions_per_week))
 
-def calculate_macros(calories: int, goal_direction: str) -> dict:
-
-    # Tỷ lệ mặc định cho duy trì cân nặng
-    protein_pct = 0.20
-    fat_pct     = 0.30
-    carb_pct    = 0.50
-
-    # Điều chỉnh split khi giảm hoặc tăng cân
-    if goal_direction == 'giảm cân':
-        protein_pct = 0.25   # ưu tiên protein để giữ cơ bắp
-        fat_pct     = 0.25
-        carb_pct    = 0.50
-    elif goal_direction == 'tăng cân':
+def calculate_macros(calories: int, goal_direction: str, macro_style: str = 'default') -> dict:
+    if macro_style == 'keto':
         protein_pct = 0.20
-        fat_pct     = 0.25
-        carb_pct    = 0.55
+        fat_pct = 0.70
+        carb_pct = 0.10
+    elif macro_style == 'high-protein':
+        protein_pct = 0.35
+        fat_pct = 0.25
+        carb_pct = 0.40
+    else:
+        # Mặc định theo goal_direction
+        protein_pct = 0.20
+        fat_pct = 0.30
+        carb_pct = 0.50
+
+        if goal_direction == 'giảm cân':
+            protein_pct = 0.25
+            fat_pct = 0.25
+            carb_pct = 0.50
+        elif goal_direction == 'tăng cân':
+            protein_pct = 0.20
+            fat_pct = 0.25
+            carb_pct = 0.55
 
     # Tính kcal cho từng macro
     protein_kcal = calories * protein_pct
     fat_kcal     = calories * fat_pct
     carb_kcal    = calories * carb_pct
 
-    # Chuyển về gram (protein & carb = 4 kcal/g; fat = 9 kcal/g)
     return {
         'protein_g': round(protein_kcal / 4, 1),
         'fat_g':     round(fat_kcal / 9, 1),
@@ -68,17 +74,19 @@ def calculate_macros(calories: int, goal_direction: str) -> dict:
     }
 
 
+
 def fetch_exercise_sessions(user_id: int, for_date: date) -> int:
-    """Đếm buổi tập của user trong 7 ngày tính từ for_date."""
     week_ago = for_date - timedelta(days=6)
-    count = (
-        db.session.query(func.count(ExerciseLog.exercise_id))
+    days_with_session = (
+        db.session.query(func.date(ExerciseLog.logged_at))
         .filter(ExerciseLog.user_id == user_id)
         .filter(ExerciseLog.logged_at >= week_ago)
         .filter(func.date(ExerciseLog.logged_at) <= for_date)
-        .scalar()
+        .group_by(func.date(ExerciseLog.logged_at))
+        .count()
     )
-    return int(count or 0)
+    return int(days_with_session or 0)
+
 
 def estimate_calories_burned(met: float, weight_kg: float, duration_min: int) -> float:
     return round(float(met) * float(weight_kg) * (duration_min / 60), 2)

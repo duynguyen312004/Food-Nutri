@@ -1,7 +1,6 @@
-// lib/ui/setup_profiles/step_name.dart
 import 'package:flutter/material.dart';
 
-class NameStep extends StatelessWidget {
+class NameStep extends StatefulWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController lastNameController;
   final TextEditingController firstNameController;
@@ -14,8 +13,19 @@ class NameStep extends StatelessWidget {
   });
 
   @override
+  State<NameStep> createState() => _NameStepState();
+}
+
+class _NameStepState extends State<NameStep>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // IMPORTANT!
     final primary = Theme.of(context).colorScheme.primary;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -43,18 +53,18 @@ class NameStep extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           Form(
-            key: formKey,
+            key: widget.formKey,
             child: Column(
               children: [
                 _buildTextField(
-                  controller: lastNameController,
+                  controller: widget.lastNameController,
                   label: 'Họ',
                   hint: 'Nhập họ của bạn',
                   primaryColor: primary,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
-                  controller: firstNameController,
+                  controller: widget.firstNameController,
                   label: 'Tên',
                   hint: 'Nhập tên của bạn',
                   primaryColor: primary,
@@ -75,6 +85,7 @@ class NameStep extends StatelessWidget {
   }) {
     return TextFormField(
       controller: controller,
+      style: const TextStyle(color: Colors.black),
       validator: (value) => (value == null || value.trim().isEmpty)
           ? 'Vui lòng nhập $label'
           : null,
@@ -83,6 +94,8 @@ class NameStep extends StatelessWidget {
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
+        labelStyle: const TextStyle(color: Colors.grey),
+        hintStyle: const TextStyle(color: Colors.grey),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: primaryColor, width: 2),
           borderRadius: BorderRadius.circular(12),
