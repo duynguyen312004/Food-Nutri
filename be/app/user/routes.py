@@ -1,7 +1,7 @@
 from flask import Blueprint, json, request, jsonify, g
 from sqlalchemy import func
 from auth.decorators import firebase_required
-from user.services import complete_initial_setup, delete_user_account, upsert_profile, upsert_settings, compute_user_metrics
+from user.services import complete_initial_setup, delete_user_account, get_weight_logs, log_weight, upsert_profile, upsert_settings, compute_user_metrics, validate_and_create_goal
 from user.models import User, UserProfile, UserSettings, WeightLog, Goal
 from datetime import datetime, date as DateType
 
@@ -195,6 +195,46 @@ def goals():
         'start_date':    goal.start_date.isoformat(),
     }), 200
 
+@user_bp.route('/weight_logs', methods=['GET'])
+@firebase_required()
+def weight_logs():
+    """
+    GET: Lấy danh sách log cân nặng của user
+    """
+    uid = g.current_user.user_id
+    start_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
+    logs = get_weight_logs(uid, start_date, end_date)
+    return jsonify([{
+        'weight_id': log.weight_id,
+        'weight_kg': float(log.weight_kg),
+        'logged_at': log.logged_at.isoformat()
+    } for log in logs]), 200
+
+@user_bp.route('/weight_logs', methods=['POST'])
+@firebase_required()
+def add_weight_log():
+    """
+    Ghi lại cân nặng mới cho user (upsert nếu ngày đã có log)
+    """
+    uid = g.current_user.user_id
+    data = request.get_json()
+    weight_kg = data.get('weight_kg')
+    logged_at = data.get('logged_at')  # dạng YYYY-MM-DD
+
+    if not weight_kg or not logged_at:
+        return jsonify({'error': 'Thiếu thông tin!'}), 400
+
+    log = log_weight(uid, float(weight_kg), logged_at)
+    return jsonify({
+        'weight_id': log.weight_id,             # auto increment
+        'weight_kg': float(log.weight_kg),      # trả về dạng float cho FE
+        'logged_at': log.logged_at.isoformat(), # trả về string chuẩn ISO
+    }), 201
+
+
+
+
 @user_bp.route('/delete_account', methods=['DELETE'])
 @firebase_required()
 def delete_account():
@@ -204,3 +244,14 @@ def delete_account():
         return jsonify({'message': 'Tài khoản đã được xoá'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/goals', methods=['POST'])
+@firebase_required()
+def set_goal():
+    uid = g.current_user.user_id
+    data = request.get_json()
+    try:
+        result = validate_and_create_goal(uid, data)
+        return jsonify(result), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400

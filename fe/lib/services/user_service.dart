@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:nutrition_app/models/weight_log_model.dart';
 
 import '../models/goal_model.dart';
 import '../models/user_model.dart';
@@ -123,6 +124,79 @@ class UserService {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to fetch metrics: ${response.statusCode}');
+    }
+  }
+
+  /// Weight Log
+  Future<List<WeightLogModel>> fetchWeightLogs(
+      {DateTime? start, DateTime? end}) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    String url = '$_baseUrl/weight_logs';
+    if (start != null && end != null) {
+      final startStr = DateFormat('yyyy-MM-dd').format(start);
+      final endStr = DateFormat('yyyy-MM-dd').format(end);
+      url += '?start_date=$startStr&end_date=$endStr';
+    }
+    final uri = Uri.parse(url);
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (idToken != null) 'Authorization': 'Bearer $idToken',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => WeightLogModel.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to fetch weight logs: ${response.statusCode}');
+    }
+  }
+
+  /// Ghi lại cân nặng mới (upsert theo ngày)
+  Future<WeightLogModel> addWeightLog({
+    required double weightKg,
+    required DateTime loggedAt,
+  }) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final uri = Uri.parse('$_baseUrl/weight_logs');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (idToken != null) 'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({
+        'weight_kg': weightKg,
+        'logged_at': DateFormat('yyyy-MM-dd').format(loggedAt),
+      }),
+    );
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return WeightLogModel.fromJson(data);
+    } else {
+      throw Exception('Failed to add weight log: ${response.statusCode}');
+    }
+  }
+
+  /// Update goal
+  /// Cập nhật mục tiêu mới cho user (PUT)
+  Future<GoalModel> updateGoal(GoalModel goal) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final uri = Uri.parse('$_baseUrl/goals');
+    final response = await http.put(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        if (idToken != null) 'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode(goal.toJson()),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return GoalModel.fromJson(data);
+    } else {
+      throw Exception('Failed to update goal: ${response.statusCode}');
     }
   }
 

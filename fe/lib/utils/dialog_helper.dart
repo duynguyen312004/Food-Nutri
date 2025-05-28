@@ -103,3 +103,36 @@ Future<void> showErrorDialog(BuildContext context, String message) async {
     ),
   );
 }
+
+Future<void> showWarningDialog(
+  BuildContext context, {
+  required String message,
+  String title = 'Cảnh báo',
+  IconData icon = Icons.warning_amber_rounded,
+  Color color = Colors.orange,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: const Color(0xFF2B2B3C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(title,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+      content: Text(message, style: const TextStyle(color: Colors.white)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}

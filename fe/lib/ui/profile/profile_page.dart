@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nutrition_app/ui/profile/weight_stats_page.dart';
 import 'package:nutrition_app/ui/welcome/welcome_page.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
 import '../../blocs/metrics/metrics_state.dart';
@@ -11,6 +12,7 @@ import '../../services/user_service.dart';
 import '../../utils/app_state_cleaner.dart';
 import '../../utils/dialog_helper.dart';
 import 'edit_profile_page.dart';
+import 'goal_page.dart';
 
 /// Trang hiển thị thông tin cá nhân và các chức năng quản lý tài khoản
 class ProfilePage extends StatelessWidget {
@@ -55,25 +57,29 @@ class ProfilePage extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildSection('Chức năng', [
                   _buildNavTile('Theo dõi cân nặng', Icons.monitor_weight,
-                      onTap: () {}),
-                  _buildNavTile('Mục tiêu', Icons.flag, onTap: () {}),
+                      onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            WeightStatsPage(targetWeight: user.targetWeight),
+                      ),
+                    );
+                  }),
+                  _buildNavTile('Mục tiêu', Icons.flag, onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GoalPage(
+                            startingWeight: user.startingWeight,
+                            targetWeight: user.targetWeight,
+                            goal: state.goal),
+                      ),
+                    );
+                  }),
                   _buildNavTile('Báo cáo dinh dưỡng', Icons.pie_chart,
                       onTap: () {}),
                   _buildNavTile('Kết nối thiết bị', Icons.sync, onTap: () {}),
-                ]),
-                const SizedBox(height: 24),
-                _buildSection('Cộng đồng', [
-                  _buildNavTile('Tham gia cộng đồng FoodNutri!', Icons.people,
-                      onTap: () {}),
-                  _buildNavTile('Tìm FoodNutri trên mạng xã hội', Icons.search,
-                      onTap: () {}),
-                ]),
-                const SizedBox(height: 24),
-                _buildSection('Pháp lý', [
-                  _buildNavTile('Chính sách quyền riêng tư', Icons.privacy_tip,
-                      onTap: () {}),
-                  _buildNavTile('Điều khoản sử dụng', Icons.description,
-                      onTap: () {}),
                 ]),
                 const SizedBox(height: 24),
                 _buildSection('Tài khoản', [
