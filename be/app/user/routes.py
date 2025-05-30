@@ -1,7 +1,7 @@
 from flask import Blueprint, json, request, jsonify, g
 from sqlalchemy import func
 from auth.decorators import firebase_required
-from user.services import complete_initial_setup, delete_user_account, get_weight_logs, log_weight, upsert_profile, upsert_settings, compute_user_metrics, validate_and_create_goal
+from user.services import complete_initial_setup, delete_user_account, get_weight_logs, log_weight, upsert_profile, upsert_settings, compute_user_metrics
 from user.models import User, UserProfile, UserSettings, WeightLog, Goal
 from datetime import datetime, date as DateType
 
@@ -244,14 +244,3 @@ def delete_account():
         return jsonify({'message': 'Tài khoản đã được xoá'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-@user_bp.route('/goals', methods=['POST'])
-@firebase_required()
-def set_goal():
-    uid = g.current_user.user_id
-    data = request.get_json()
-    try:
-        result = validate_and_create_goal(uid, data)
-        return jsonify(result), 201
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400

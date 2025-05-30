@@ -1,11 +1,9 @@
 from flask import Flask
-from sqlalchemy import text
 from config import Config
 from extensions import db, init_firebase
 from user.routes import user_bp
 from logs.routes import logs_bp
 from food.routes import food_bp
-
 from exercise.routes import exercise_bp
 
 

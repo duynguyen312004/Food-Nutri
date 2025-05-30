@@ -9,10 +9,9 @@ class RecentMealsCubit extends Cubit<RecentMealsState> {
   RecentMealsCubit(this._logService) : super(RecentMealsInitial());
 
   Future<void> loadRecentMeals(DateTime date) async {
-    emit(RecentMealsLoading());
+    emit(RecentMealsLoading()); // Force UI loading (xóa state cũ)
     try {
       final meals = await _logService.getRecentLogs(date);
-
       emit(RecentMealsLoaded(meals));
     } catch (e) {
       emit(RecentMealsError(e.toString()));

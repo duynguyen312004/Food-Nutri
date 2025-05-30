@@ -249,11 +249,9 @@ class _JournalPageState extends State<JournalPage>
               ),
               const SizedBox(width: 8),
               if (meals.isNotEmpty)
-                Expanded(
+                Flexible(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(
-                        right: 8), // Giúp tránh bị cắt chữ
                     child: Row(
                       children: [
                         _buildSummaryIcon('kcal.png', '${cal.round()} kcal'),
@@ -402,43 +400,49 @@ class _MealCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      style: DefaultTextStyle.of(context)
-                          .style
-                          .copyWith(fontSize: 14),
-                      children: [
-                        TextSpan(
-                          text: name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: RichText(
+                      text: TextSpan(
+                        style: DefaultTextStyle.of(context)
+                            .style
+                            .copyWith(fontSize: 14),
+                        children: [
+                          TextSpan(
+                            text: name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        TextSpan(
-                          text: ' • ${quantity.toStringAsFixed(1)}$unit',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14,
+                          TextSpan(
+                            text: ' • ${quantity.toStringAsFixed(1)}$unit',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _iconText('kcal.png',
-                          '${(log.data['calories'] as num).toDouble().toStringAsFixed(1)} kcal'),
-                      const SizedBox(width: 10),
-                      _iconText('proteins.png',
-                          '${(log.data['protein'] as num).toDouble().toStringAsFixed(1)}g'),
-                      const SizedBox(width: 10),
-                      _iconText('carb.png',
-                          '${(log.data['carbs'] as num).toDouble().toStringAsFixed(1)}g'),
-                      const SizedBox(width: 10),
-                      _iconText('fat.png',
-                          '${(log.data['fat'] as num).toDouble().toStringAsFixed(1)}g'),
-                    ],
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _iconText('kcal.png',
+                            '${(log.data['calories'] as num).toDouble().toStringAsFixed(1)} kcal'),
+                        const SizedBox(width: 10),
+                        _iconText('proteins.png',
+                            '${(log.data['protein'] as num).toDouble().toStringAsFixed(1)}g'),
+                        const SizedBox(width: 10),
+                        _iconText('carb.png',
+                            '${(log.data['carbs'] as num).toDouble().toStringAsFixed(1)}g'),
+                        const SizedBox(width: 10),
+                        _iconText('fat.png',
+                            '${(log.data['fat'] as num).toDouble().toStringAsFixed(1)}g'),
+                      ],
+                    ),
                   ),
                 ],
               ),

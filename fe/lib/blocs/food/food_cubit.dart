@@ -15,4 +15,18 @@ class FoodCubit extends Cubit<FoodState> {
       emit(FoodError(e.toString()));
     }
   }
+
+  Future<void> searchFoods(String query) async {
+    emit(FoodLoading());
+    try {
+      final results = await FoodService.searchFoods(query);
+      emit(FoodListLoaded(results));
+    } catch (e) {
+      emit(FoodError(e.toString()));
+    }
+  }
+
+  void clear() {
+    emit(FoodInitial());
+  }
 }

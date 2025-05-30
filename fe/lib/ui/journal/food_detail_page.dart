@@ -10,6 +10,9 @@ import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
 import 'package:nutrition_app/utils/dialog_helper.dart';
 
+import '../../blocs/recent_log/recent_meals_cubit.dart';
+import '../../widgets/pretty_image.dart';
+
 class FoodDetailPage extends StatefulWidget {
   final int foodId; // ID của món ăn
   final double initialQuantity; // Lượng khẩu phần ban đầu (gram)
@@ -99,12 +102,14 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                     // Ảnh món ăn
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: food.imageUrl != null
-                          ? Image.network(food.imageUrl!,
-                              height: 160, fit: BoxFit.cover)
-                          : Image.asset('assets/images/suon-nuong-mat-ong.png',
-                              height: 160, fit: BoxFit.cover),
+                      child: PrettyImage(
+                        imagePath: food.imageUrl ?? '',
+                        width: double.infinity,
+                        height: 160,
+                        fit: BoxFit.cover,
+                      ),
                     ),
+
                     const SizedBox(height: 16),
 
                     // Tên món ăn
@@ -296,14 +301,11 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
             ),
             onPressed: () async {
               if (widget.isEditing) {
-                // Nếu đang chỉnh sửa, chỉ cần pop quantity về lại JournalPage để xử lý tiếp
                 if (!context.mounted) return;
-                showSuccessDialog(context, 'Đã cập nhật khẩu phần!');
-                await Future.delayed(const Duration(seconds: 1));
+                await showSuccessDialog(context, 'Đã cập nhật khẩu phần!');
                 if (!context.mounted) return;
                 Navigator.pop(context, _quantity);
               } else {
-                // Nếu là thêm mới món ăn
                 final timestamp = widget.timestamp ?? DateTime.now();
                 String getMealName(DateTime time) {
                   final h = time.hour;
@@ -322,8 +324,10 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                     );
                 if (!context.mounted) return;
                 context.read<MetricsCubit>().loadMetricsForDate(timestamp);
-                showSuccessDialog(context, 'Đã thêm món ăn!');
-                await Future.delayed(const Duration(seconds: 1));
+                context
+                    .read<RecentMealsCubit>()
+                    .loadRecentMeals(widget.timestamp ?? DateTime.now());
+                await showSuccessDialog(context, 'Đã thêm món ăn!');
                 if (!context.mounted) return;
                 Navigator.pop(context, true);
               }

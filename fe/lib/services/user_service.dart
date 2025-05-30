@@ -180,11 +180,11 @@ class UserService {
   }
 
   /// Update goal
-  /// Cập nhật mục tiêu mới cho user (PUT)
+  /// Cập nhật mục tiêu mới cho user (POST)
   Future<GoalModel> updateGoal(GoalModel goal) async {
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
     final uri = Uri.parse('$_baseUrl/goals');
-    final response = await http.put(
+    final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json',

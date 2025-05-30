@@ -11,6 +11,11 @@ class FoodLoaded extends FoodState {
   FoodLoaded(this.food);
 }
 
+class FoodListLoaded extends FoodState {
+  final List<FoodItem> results;
+  FoodListLoaded(this.results);
+}
+
 class FoodError extends FoodState {
   final String message;
   FoodError(this.message);

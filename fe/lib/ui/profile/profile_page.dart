@@ -71,9 +71,10 @@ class ProfilePage extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => GoalPage(
-                            startingWeight: user.startingWeight,
-                            targetWeight: user.targetWeight,
-                            goal: state.goal),
+                          startingWeight: user.startingWeight,
+                          targetWeight: user.targetWeight,
+                          goal: state.goal,
+                        ),
                       ),
                     );
                   }),

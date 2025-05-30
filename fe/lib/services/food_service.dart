@@ -30,4 +30,24 @@ class FoodService {
       throw Exception('Không tìm thấy món ăn (mã ${response.statusCode})');
     }
   }
+
+  static Future<List<FoodItem>> searchFoods(String query) async {
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (idToken == null) {
+      throw Exception('Missing Firebase token');
+    }
+
+    final uri = Uri.parse('$_baseUrl?query=${Uri.encodeComponent(query)}');
+
+    final response = await http.get(uri, headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $idToken',
+    });
+    if (response.statusCode == 200) {
+      final List<dynamic> rawList = jsonDecode(response.body);
+      return rawList.map((e) => FoodItem.fromJson(e)).toList();
+    } else {
+      throw Exception('Lỗi khi tìm kiếm món ăn');
+    }
+  }
 }

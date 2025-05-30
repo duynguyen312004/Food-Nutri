@@ -20,7 +20,6 @@ class GoalPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // BlocBuilder để lấy currentWeight động từ weight logs
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
@@ -33,16 +32,13 @@ class GoalPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           TextButton(
-            onPressed: () {
-              // TODO: Lưu mục tiêu nếu có chức năng chỉnh sửa
-            },
+            onPressed: () {},
             child: const Text('Lưu', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
       body: BlocBuilder<WeightLogCubit, WeightLogState>(
         builder: (context, weightState) {
-          // Tìm currentWeight từ log gần nhất
           double? currentWeight;
           if (weightState is WeightLogLoaded && weightState.logs.isNotEmpty) {
             // Lấy log mới nhất (đã sort DESC)
@@ -109,18 +105,14 @@ class GoalPage extends StatelessWidget {
                 context,
                 title: 'Mục tiêu calo & macro',
                 subtitle: 'Tùy chỉnh mục tiêu hàng ngày của bạn',
-                onTap: () {
-                  // TODO: Mở trang chỉnh macro
-                },
+                onTap: () {},
               ),
               const Divider(color: Colors.white12),
               _buildClickableItem(
                 context,
                 title: 'Chế độ ăn',
                 subtitle: '',
-                onTap: () {
-                  // TODO: Chọn chế độ ăn uống
-                },
+                onTap: () {},
               ),
               const Divider(color: Colors.white12),
               _buildDisabledItem(

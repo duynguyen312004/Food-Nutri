@@ -127,7 +127,6 @@ def update_meal_log(log_id):
     try:
         timestamp = datetime.fromisoformat(timestamp_str)
         user_id = g.current_user.user_id
-        print(f"Updating log {log_id} to {quantity} at {timestamp} for user {user_id}")
 
         update_meal_quantity(log_id, quantity, user_id)
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-void showSuccessDialog(BuildContext context, String message) {
-  showDialog(
+Future<void> showSuccessDialog(BuildContext context, String message) {
+  return showDialog(
     context: context,
     builder: (_) => AlertDialog(
       backgroundColor: const Color(0xFF2B2B3C),
@@ -14,18 +14,20 @@ void showSuccessDialog(BuildContext context, String message) {
           Text(message, style: const TextStyle(color: Colors.white)),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+          child: const Text('OK', style: TextStyle(color: Colors.white)),
+        )
+      ],
     ),
   );
-
-  Future.delayed(const Duration(seconds: 1), () {
-    if (context.mounted) Navigator.of(context).pop();
-  });
 }
 
 void showDeleteDialog(BuildContext context, String message) {
   showDialog(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (dialogContext) => AlertDialog(
       backgroundColor: const Color(0xFF2B2B3C),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Column(
@@ -36,12 +38,15 @@ void showDeleteDialog(BuildContext context, String message) {
           Text(message, style: const TextStyle(color: Colors.white)),
         ],
       ),
+      actions: [
+        TextButton(
+          // Dùng dialogContext thay vì context để luôn đúng scope
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Đóng', style: TextStyle(color: Colors.white)),
+        )
+      ],
     ),
   );
-
-  Future.delayed(const Duration(seconds: 1), () {
-    if (context.mounted) Navigator.of(context).pop();
-  });
 }
 
 Future<bool> confirmDialog({

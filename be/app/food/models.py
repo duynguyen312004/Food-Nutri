@@ -4,8 +4,9 @@ class FoodItem(db.Model):
     __tablename__ = 'food_items'
     food_item_id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
+    name_unsigned = db.Column(db.String(255))
     brand = db.Column(db.String(255))
-    serving_size = db.Column(db.Numeric(8, 2), nullable=False)
+    serving_size = db.Column(db.Numeric(8, 2), nullable=False)  
     serving_unit = db.Column(db.String(50), nullable=False)
     calories = db.Column(db.Numeric(8, 2), nullable=False)
     protein_g = db.Column(db.Numeric(8, 2), nullable=False)
@@ -26,3 +27,11 @@ class BarcodeScan(db.Model):
     food_item_id = db.Column(db.BigInteger, db.ForeignKey('food_items.food_item_id'))
     scanned_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
+
+class FoodItemIngredient(db.Model):
+    __tablename__ = 'food_item_ingredients'
+    id = db.Column(db.BigInteger, primary_key=True)
+    recipe_id = db.Column(db.BigInteger, db.ForeignKey('food_items.food_item_id'), nullable=False)
+    ingredient_id = db.Column(db.BigInteger, db.ForeignKey('food_items.food_item_id'), nullable=False)
+    quantity = db.Column(db.Numeric(8, 2), nullable=False)
+    unit = db.Column(db.String(20), nullable=False, default='g')

@@ -1,15 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/food/food_cubit.dart';
+import '../../blocs/food/food_state.dart';
 import '../../blocs/recent_log/recent_meals_cubit.dart';
 import '../../blocs/recent_log/recent_meals_state.dart';
 import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
+import '../../widgets/fast_image.dart';
 import 'food_detail_page.dart';
+import 'package:nutrition_app/utils/dialog_helper.dart';
 
-/// Trang thêm món ăn vào nhật ký tại một khung giờ cụ thể trong ngày.
-/// Bao gồm các tab như: Gần đây, Tạo bởi tôi, Yêu thích, Thực đơn.
 class AddMealPage extends StatefulWidget {
   final DateTime selectedDate;
   final int selectedHour;
@@ -27,6 +29,27 @@ class AddMealPage extends StatefulWidget {
 class _AddMealPageState extends State<AddMealPage> {
   int _selectedTabIndex = 0;
   final tabs = ['Gần đây', 'Tạo bởi tôi', 'Yêu thích', 'Thực đơn'];
+  final _searchController = TextEditingController();
+  String _searchText = '';
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    if (query.isEmpty) {
+      context.read<FoodCubit>().clear();
+      return;
+    }
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      context.read<FoodCubit>().searchFoods(query);
+    });
+  }
 
   @override
   void initState() {
@@ -47,18 +70,24 @@ class _AddMealPageState extends State<AddMealPage> {
         title: Text(timeRange),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildTabBar(),
-          const SizedBox(height: 8),
-          Expanded(child: _buildTabContent()),
-        ],
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            if (_searchText.isEmpty) ...[
+              _buildTabBar(),
+              const SizedBox(height: 8),
+              Expanded(child: _buildTabContent()),
+            ] else
+              Expanded(child: _buildSearchResults())
+          ],
+        ),
       ),
     );
   }
 
-  /// Thanh tìm kiếm món ăn
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -67,21 +96,113 @@ class _AddMealPageState extends State<AddMealPage> {
           color: Colors.grey[850],
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const TextField(
+        child: TextField(
+          controller: _searchController,
+          onChanged: (value) {
+            setState(() => _searchText = value.trim());
+            _onSearchChanged(value.trim());
+          },
           decoration: InputDecoration(
             hintText: 'Tìm món ăn...',
-            hintStyle: TextStyle(color: Colors.white54),
-            prefixIcon: Icon(Icons.search, color: Colors.white60),
+            hintStyle: const TextStyle(color: Colors.white54),
+            prefixIcon: const Icon(Icons.search, color: Colors.white60),
+            suffixIcon: _searchText.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white38),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchText = '');
+                      context.read<FoodCubit>().clear();
+                    },
+                  )
+                : null,
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-          style: TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white),
         ),
       ),
     );
   }
 
-  /// Thanh tab chuyển giữa các chế độ xem món ăn
+  Widget _buildSearchResults() {
+    return BlocBuilder<FoodCubit, FoodState>(
+      builder: (context, state) {
+        if (state is FoodLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is FoodListLoaded) {
+          final foods = state.results;
+          if (foods.isEmpty) {
+            return const Center(child: Text("Không tìm thấy món ăn nào!"));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: foods.length,
+            itemBuilder: (context, index) {
+              final food = foods[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: MealCard(
+                  name: food.name,
+                  quantity: food.servingSize,
+                  unit: food.servingUnit,
+                  calories: food.calories.toInt(),
+                  protein: food.protein,
+                  carbs: food.carbs,
+                  fat: food.fat,
+                  imagePath: food.imageUrl ?? 'assets/images/food.jpg',
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            BlocProvider.value(
+                                value: context.read<FoodCubit>()),
+                            BlocProvider.value(
+                                value: context.read<JournalCubit>()),
+                            BlocProvider.value(
+                                value: context.read<MetricsCubit>()),
+                          ],
+                          child: FoodDetailPage(
+                            foodId: food.foodItemId,
+                            initialQuantity: food.servingSize,
+                            timestamp: DateTime(
+                              widget.selectedDate.year,
+                              widget.selectedDate.month,
+                              widget.selectedDate.day,
+                              widget.selectedHour,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+// Nếu đã thêm thành công
+                    if (result == true) {
+                      _searchController.clear();
+                      setState(() {
+                        _searchText = '';
+                        _selectedTabIndex = 0; // Reset về tab Gần đây
+                      });
+                      if (!context.mounted) return;
+                      await context
+                          .read<RecentMealsCubit>()
+                          .loadRecentMeals(widget.selectedDate);
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        } else if (state is FoodError) {
+          return Center(child: Text('Lỗi: ${state.message}'));
+        }
+        return const SizedBox();
+      },
+    );
+  }
+
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -121,7 +242,6 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
-  /// Các tùy chọn thêm món nhanh bằng mã vạch, camera, giọng nói
   Widget _buildAddOptionsRow() {
     final options = [
       {'label': 'Mã vạch', 'image': 'assets/icons/qr_scan.png'},
@@ -157,7 +277,6 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
-  /// Nội dung theo từng tab, hiện tại chỉ xử lý tab Gần đây
   Widget _buildTabContent() {
     switch (_selectedTabIndex) {
       case 0:
@@ -175,45 +294,72 @@ class _AddMealPageState extends State<AddMealPage> {
                 itemBuilder: (context, index) {
                   if (index == 0) return _buildAddOptionsRow();
                   final meal = meals[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: MealCard(
-                      name: meal.name,
-                      quantity: meal.quantity,
-                      unit: meal.unit,
-                      calories: meal.calories.toInt(),
-                      protein: meal.protein,
-                      carbs: meal.carbs,
-                      fat: meal.fat,
-                      imagePath: meal.imageUrl ??
-                          'assets/images/suon-nuong-mat-ong.png',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MultiBlocProvider(
-                              providers: [
-                                BlocProvider.value(
-                                    value: context.read<FoodCubit>()),
-                                BlocProvider.value(
-                                    value: context.read<JournalCubit>()),
-                                BlocProvider.value(
-                                    value: context.read<MetricsCubit>()),
-                              ],
-                              child: FoodDetailPage(
-                                foodId: meal.foodItemId,
-                                initialQuantity: meal.quantity,
-                                timestamp: DateTime(
-                                  widget.selectedDate.year,
-                                  widget.selectedDate.month,
-                                  widget.selectedDate.day,
-                                  widget.selectedHour,
+
+                  return Dismissible(
+                    key: ValueKey(meal.foodItemId),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    onDismissed: (_) {
+                      context
+                          .read<RecentMealsCubit>()
+                          .removeMealFromUI(meal.foodItemId);
+                      showDeleteDialog(
+                          context, 'Đã ẩn khỏi gần đây: ${meal.name}');
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: MealCard(
+                        name: meal.name,
+                        quantity: meal.quantity,
+                        unit: meal.unit,
+                        calories: meal.calories.toInt(),
+                        protein: meal.protein,
+                        carbs: meal.carbs,
+                        fat: meal.fat,
+                        imagePath: meal.imageUrl ?? 'assets/images/food.jpg',
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MultiBlocProvider(
+                                providers: [
+                                  BlocProvider.value(
+                                      value: context.read<FoodCubit>()),
+                                  BlocProvider.value(
+                                      value: context.read<JournalCubit>()),
+                                  BlocProvider.value(
+                                      value: context.read<MetricsCubit>()),
+                                ],
+                                child: FoodDetailPage(
+                                  foodId: meal.foodItemId,
+                                  initialQuantity: meal.quantity,
+                                  timestamp: DateTime(
+                                    widget.selectedDate.year,
+                                    widget.selectedDate.month,
+                                    widget.selectedDate.day,
+                                    widget.selectedHour,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                          if (result == true && context.mounted) {
+                            await context
+                                .read<RecentMealsCubit>()
+                                .loadRecentMeals(widget.selectedDate);
+                            setState(() {
+                              _searchController.clear();
+                              _searchText = '';
+                              _selectedTabIndex = 0;
+                            });
+                          }
+                        },
+                      ),
                     ),
                   );
                 },
@@ -231,7 +377,6 @@ class _AddMealPageState extends State<AddMealPage> {
   }
 }
 
-/// Thẻ hiển thị món ăn với tên, macros và hình ảnh
 class MealCard extends StatelessWidget {
   final String name;
   final int calories;
@@ -268,10 +413,8 @@ class MealCard extends StatelessWidget {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(imagePath,
-                width: 48, height: 48, fit: BoxFit.cover),
-          ),
+              borderRadius: BorderRadius.circular(8),
+              child: FastImage(imagePath: imagePath, width: 48, height: 48)),
           title: Text(
             '$name (${unit == "g" ? quantity.toStringAsFixed(1) : quantity.toStringAsFixed(0)}$unit)',
             style: const TextStyle(

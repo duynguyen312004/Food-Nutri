@@ -241,7 +241,6 @@ def update_meal_quantity(log_id: int, quantity: float, user_id: int):
         .first()
     )
     if entry:
-        print("Before update:", entry.quantity, entry.calories)
         food = FoodItem.query.get(entry.food_item_id)
         factor = float(quantity) / float(food.serving_size)
         entry.quantity = quantity
@@ -249,4 +248,3 @@ def update_meal_quantity(log_id: int, quantity: float, user_id: int):
         entry.protein_g = float(food.protein_g) * factor
         entry.carbs_g = float(food.carbs_g) * factor
         entry.fat_g = float(food.fat_g) * factor
-        print("After update:", entry.quantity, entry.calories)
