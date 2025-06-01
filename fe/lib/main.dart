@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutrition_app/blocs/auth/auth_bloc.dart';
 import 'package:nutrition_app/blocs/exercise/exercise_cubit.dart';
+import 'package:nutrition_app/blocs/food/custom_food_cubit.dart';
+import 'package:nutrition_app/blocs/food/my_food_cubit.dart';
+import 'package:nutrition_app/blocs/food/recipe_cubit.dart';
 import 'package:nutrition_app/blocs/goal/goal_cubit.dart';
 import 'package:nutrition_app/blocs/log/journal_cubit.dart';
 import 'package:nutrition_app/blocs/log/weight_log_cubit.dart';
@@ -15,6 +18,7 @@ import 'package:nutrition_app/services/exercise_service.dart';
 import 'package:nutrition_app/services/log_service.dart';
 
 import 'blocs/food/food_cubit.dart';
+import 'blocs/food/food_ingredient_cubit.dart';
 import 'blocs/user/user_data_cubit.dart';
 import 'services/user_service.dart';
 import 'ui/splash/splash_screen.dart';
@@ -45,7 +49,11 @@ void main() async {
             create: (context) => UserDataCubit(UserService())..loadUserData(),
           ),
           BlocProvider(create: (_) => WeightLogCubit(UserService())),
-          BlocProvider(create: (_) => GoalCubit(UserService()))
+          BlocProvider(create: (_) => GoalCubit(UserService())),
+          BlocProvider(create: (_) => MyFoodsCubit()),
+          BlocProvider(create: (_) => CustomFoodCubit()),
+          BlocProvider(create: (_) => FoodIngredientCubit()),
+          BlocProvider(create: (_) => RecipeCubit())
         ],
         child: const MyApp(),
       ),

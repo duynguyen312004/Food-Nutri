@@ -53,6 +53,16 @@ CREATE TABLE food_items (
   updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
+-- Bảng food_item_ingredients (tạo recipe)
+CREATE TABLE food_item_ingredients (
+    id BIGSERIAL PRIMARY KEY,
+    recipe_id BIGINT NOT NULL REFERENCES food_items(food_item_id) ON DELETE CASCADE,
+    ingredient_id BIGINT NOT NULL REFERENCES food_items(food_item_id) ON DELETE CASCADE,
+    quantity NUMERIC(8,2) NOT NULL,
+    unit VARCHAR(20) NOT NULL DEFAULT 'g'
+);
+
+
 -- 5. Bảng barcode_scans
 CREATE TABLE barcode_scans (
   scan_id       BIGSERIAL PRIMARY KEY,

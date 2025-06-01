@@ -136,3 +136,5 @@ def update_meal_log(log_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+

@@ -15,6 +15,7 @@ class FoodItem(db.Model):
     barcode = db.Column(db.String(50), unique=True)
     is_custom = db.Column(db.Boolean, nullable=False, default=False)
     created_by = db.Column(db.BigInteger, db.ForeignKey('users.user_id'))
+    is_recipe = db.Column(db.Boolean, nullable=False, default=False)
     image_url = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now())

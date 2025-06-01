@@ -3,11 +3,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../blocs/food/recipe_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
 import '../../blocs/metrics/metrics_state.dart';
 import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/log/journal_state.dart';
 import '../../models/log_entry.dart';
+import '../../widgets/fast_image.dart';
 import 'add_entry_page.dart';
 import 'food_detail_page.dart';
 import 'package:nutrition_app/utils/dialog_helper.dart';
@@ -248,24 +250,24 @@ class _JournalPageState extends State<JournalPage>
                 ),
               ),
               const SizedBox(width: 8),
-              if (meals.isNotEmpty)
-                Flexible(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildSummaryIcon('kcal.png', '${cal.round()} kcal'),
-                        _buildSummaryIcon(
-                            'proteins.png', '${protein.round()}g'),
-                        _buildSummaryIcon('carb.png', '${carb.round()}g'),
-                        _buildSummaryIcon('fat.png', '${fat.round()}g'),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                const Spacer(), // Cân giữa khi không có meals
-              const SizedBox(width: 4),
+              // Dải tổng hợp macro meal
+              Expanded(
+                child: meals.isNotEmpty
+                    ? SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildSummaryIcon(
+                                'kcal.png', '${cal.round()} kcal'),
+                            _buildSummaryIcon(
+                                'proteins.png', '${protein.round()}g'),
+                            _buildSummaryIcon('carb.png', '${carb.round()}g'),
+                            _buildSummaryIcon('fat.png', '${fat.round()}g'),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
               IconButton(
                 icon: Icon(Icons.add_circle_outline,
                     color: Theme.of(context).colorScheme.primary),
@@ -292,8 +294,12 @@ class _JournalPageState extends State<JournalPage>
                   final quantity = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => BlocProvider.value(
-                        value: context.read<JournalCubit>().foodCubit,
+                      builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(
+                              value: context.read<JournalCubit>().foodCubit),
+                          BlocProvider(create: (_) => RecipeCubit()),
+                        ],
                         child: FoodDetailPage(
                           foodId: e.data['food_item_id'],
                           initialQuantity:
@@ -304,6 +310,7 @@ class _JournalPageState extends State<JournalPage>
                       ),
                     ),
                   );
+
                   if (!context.mounted) return;
                   if (quantity != null &&
                       quantity is double &&
@@ -325,6 +332,7 @@ class _JournalPageState extends State<JournalPage>
       ),
     );
   }
+
 // 🔹 Tạo icon + text nhỏ (calories, protein, carb, fat) hiển thị tổng hợp meal trong từng giờ
 
   Widget _buildSummaryIcon(String iconName, String value) {
@@ -388,13 +396,15 @@ class _MealCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            img != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(img,
-                        width: 56, height: 56, fit: BoxFit.cover),
-                  )
-                : const Icon(Icons.fastfood, size: 40),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: FastImage(
+                imagePath: img ?? '',
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/food/my_food_cubit.dart';
+import '../../blocs/log/journal_cubit.dart';
+import '../../blocs/metrics/metrics_cubit.dart';
+import '../../blocs/recent_log/recent_meals_cubit.dart';
 import '../home/home_page.dart';
 import '../journal/journal_page.dart';
 import '../plans/plans_page.dart';
@@ -25,6 +30,20 @@ class MainScreenState extends State<MainScreen> {
     if (index == _currentIndex) return;
     setState(() {
       _currentIndex = index;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    final today = DateTime.now();
+    // Preload dữ liệu khi mở MainScreen lần đầu
+    Future.microtask(() {
+      context.read<MetricsCubit>().loadMetricsForDate(today);
+      context.read<JournalCubit>().loadLogs(today);
+      context.read<RecentMealsCubit>().loadRecentMeals(today);
+      context.read<MyFoodsCubit>().loadMyFoods();
     });
   }
 

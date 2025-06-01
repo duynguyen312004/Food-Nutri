@@ -3,13 +3,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nutrition_app/blocs/recent_log/recent_meals_cubit.dart';
 import 'package:nutrition_app/ui/main/main_screen.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../../blocs/log/journal_cubit.dart';
-import '../../blocs/metrics/metrics_cubit.dart';
 import '../../blocs/user/user_data_cubit.dart';
 import '../../blocs/user/user_data_state.dart';
 import '../setup_profiles.dart/setup_profiles_screen.dart';
@@ -59,26 +56,10 @@ class WelcomePage extends StatelessWidget {
           /// Listener sẽ được gọi mỗi khi `AuthState` thay đổi
           listener: (context, state) async {
             if (state is AuthAuthenticated) {
-              // Khi đăng nhập thành công, đồng thời preload dữ liệu liên quan
-              final today = DateTime.now();
-              await Future.wait([
-                context
-                    .read<UserDataCubit>()
-                    .loadUserData(), // Hồ sơ người dùng
-                context
-                    .read<MetricsCubit>()
-                    .loadMetricsForDate(today), // Dữ liệu calories, macros
-                context
-                    .read<JournalCubit>()
-                    .loadLogs(today), // Nhật ký ăn uống, tập luyện, uống nước
-                context
-                    .read<RecentMealsCubit>()
-                    .loadRecentMeals(today), // Gợi ý món ăn gần đây
-              ]);
+              await context.read<UserDataCubit>().loadUserData();
               if (!context.mounted) return;
-              await _navigateAfterAuth(context); // Chuyển trang sau khi xong
+              await _navigateAfterAuth(context);
             } else if (state is AuthError) {
-              // Nếu xảy ra lỗi khi đăng nhập, hiển thị snackbar
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.message)),
               );

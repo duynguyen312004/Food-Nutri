@@ -54,7 +54,7 @@ Future<bool> confirmDialog({
   required String title,
   required String message,
   String cancelText = 'Huỷ',
-  String confirmText = 'Xoá',
+  String confirmText = 'Có',
   Color confirmColor = Colors.red,
   IconData icon = Icons.warning_amber_rounded,
 }) async {

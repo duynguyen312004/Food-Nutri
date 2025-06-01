@@ -2,13 +2,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/food/custom_food_cubit.dart';
+import '../../blocs/food/my_food_cubit.dart';
+import '../../blocs/food/my_food_state.dart';
 import '../../blocs/food/food_cubit.dart';
 import '../../blocs/food/food_state.dart';
+import '../../blocs/food/recipe_cubit.dart';
 import '../../blocs/recent_log/recent_meals_cubit.dart';
 import '../../blocs/recent_log/recent_meals_state.dart';
 import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
 import '../../widgets/fast_image.dart';
+import 'add_custom_food_page.dart';
+import 'create_recipe_page.dart';
 import 'food_detail_page.dart';
 import 'package:nutrition_app/utils/dialog_helper.dart';
 
@@ -164,6 +170,7 @@ class _AddMealPageState extends State<AddMealPage> {
                                 value: context.read<JournalCubit>()),
                             BlocProvider.value(
                                 value: context.read<MetricsCubit>()),
+                            BlocProvider(create: (_) => RecipeCubit()),
                           ],
                           child: FoodDetailPage(
                             foodId: food.foodItemId,
@@ -334,6 +341,7 @@ class _AddMealPageState extends State<AddMealPage> {
                                       value: context.read<JournalCubit>()),
                                   BlocProvider.value(
                                       value: context.read<MetricsCubit>()),
+                                  BlocProvider(create: (_) => RecipeCubit()),
                                 ],
                                 child: FoodDetailPage(
                                   foodId: meal.foodItemId,
@@ -368,12 +376,216 @@ class _AddMealPageState extends State<AddMealPage> {
             return const SizedBox();
           },
         );
+
+      case 1:
+        return BlocBuilder<MyFoodsCubit, MyFoodsState>(
+          builder: (context, state) {
+            // 2 nút tạo món và tạo thực phẩm, bạn giữ lại phần icon + style của mình
+            Widget addRow = Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  // Nút Tạo mới món ăn
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => RecipeCubit(),
+                              child: const CreateRecipePage(),
+                            ),
+                          ),
+                        );
+
+                        if (result == true && context.mounted) {
+                          context.read<MyFoodsCubit>().loadMyFoods();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/icons/recipe_book.png',
+                              width: 36,
+                              height: 36,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tạo mới món ăn',
+                              style: TextStyle(
+                                color: Colors.green[400],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Nút Tạo mới thực phẩm
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        // Mở trang tạo thực phẩm mới
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => CustomFoodCubit(),
+                              child: const AddCustomFoodPage(),
+                            ),
+                          ),
+                        );
+                        // Sau khi tạo mới xong, reload lại danh sách
+                        if (result == true && context.mounted) {
+                          context.read<MyFoodsCubit>().loadMyFoods();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/icons/add_food.png',
+                              width: 36,
+                              height: 36,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Tạo mới thực phẩm',
+                              style: TextStyle(
+                                color: Colors.deepOrangeAccent,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+
+            // List món tự tạo hoặc empty/error state
+            Widget foodList;
+            if (state is MyFoodsLoading) {
+              foodList = const Padding(
+                padding: EdgeInsets.only(top: 32),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            } else if (state is MyFoodsLoaded && state.foods.isNotEmpty) {
+              foodList = ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 24, bottom: 24),
+                itemCount: state.foods.length,
+                itemBuilder: (context, index) {
+                  final food = state.foods[index];
+                  return Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: MealCard(
+                      name: food.name,
+                      quantity: food.servingSize,
+                      unit: food.servingUnit,
+                      calories: food.calories.toInt(),
+                      protein: food.protein,
+                      carbs: food.carbs,
+                      fat: food.fat,
+                      imagePath: food.imageUrl ?? 'assets/images/food.jpg',
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FoodDetailPage(
+                              foodId: food.foodItemId,
+                              initialQuantity: food.servingSize,
+                              isEditing: false,
+                              timestamp: DateTime(
+                                widget.selectedDate.year,
+                                widget.selectedDate.month,
+                                widget.selectedDate.day,
+                                widget.selectedHour,
+                              ),
+                            ),
+                          ),
+                        );
+
+                        if (result == true && context.mounted) {
+                          context.read<MyFoodsCubit>().loadMyFoods();
+                        }
+                      },
+                    ),
+                  );
+                },
+              );
+            } else if (state is MyFoodsLoaded && state.foods.isEmpty) {
+              foodList = Padding(
+                padding: const EdgeInsets.only(top: 40),
+                child: _buildEmptyStateMyFoods(),
+              );
+            } else if (state is MyFoodsError) {
+              foodList = Padding(
+                padding: const EdgeInsets.only(top: 32),
+                child: Center(child: Text(state.message)),
+              );
+            } else {
+              foodList = const SizedBox();
+            }
+
+            // Wrap bằng SingleChildScrollView để luôn giữ nút add ở trên cùng
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  addRow,
+                  foodList,
+                ],
+              ),
+            );
+          },
+        );
+
       default:
         return const Center(
           child: Text('Tính năng đang phát triển...',
               style: TextStyle(color: Colors.white70)),
         );
     }
+  }
+
+  Widget _buildEmptyStateMyFoods() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Bạn chưa có món nào tự tạo.",
+            style: TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -426,11 +638,14 @@ class MealCard extends StatelessWidget {
               children: [
                 _buildMacroIcon('assets/icons/kcal.png', '$calories kcal'),
                 const SizedBox(width: 8),
-                _buildMacroIcon('assets/icons/proteins.png', '${protein}g'),
+                _buildMacroIcon('assets/icons/proteins.png',
+                    '${protein.toStringAsFixed(1)}g'),
                 const SizedBox(width: 8),
-                _buildMacroIcon('assets/icons/carb.png', '${carbs}g'),
+                _buildMacroIcon(
+                    'assets/icons/carb.png', '${carbs.toStringAsFixed(1)}g'),
                 const SizedBox(width: 8),
-                _buildMacroIcon('assets/icons/fat.png', '${fat}g'),
+                _buildMacroIcon(
+                    'assets/icons/fat.png', '${fat.toStringAsFixed(1)}g'),
               ],
             ),
           ),

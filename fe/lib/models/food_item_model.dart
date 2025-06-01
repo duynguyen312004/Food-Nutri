@@ -8,6 +8,7 @@ class FoodItem {
   final double servingSize;
   final String servingUnit;
   final bool isCustom;
+  final bool isRecipe;
   final String? imageUrl;
 
   FoodItem({
@@ -20,6 +21,7 @@ class FoodItem {
     required this.servingSize,
     required this.servingUnit,
     required this.isCustom,
+    required this.isRecipe,
     this.imageUrl,
   });
 
@@ -34,6 +36,7 @@ class FoodItem {
       servingSize: (json['serving_size'] as num).toDouble(),
       servingUnit: json['serving_unit'],
       isCustom: json['is_custom'] as bool,
+      isRecipe: json['is_recipe'] as bool? ?? false,
       imageUrl: json['image_url'],
     );
   }

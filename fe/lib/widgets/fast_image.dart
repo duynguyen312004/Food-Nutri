@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../utils/image_helper.dart';
+
 class FastImage extends StatelessWidget {
   final String imagePath;
   final double width;
@@ -19,9 +21,13 @@ class FastImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imagePath.startsWith('http')) {
+    final url = normalizeImageUrl(imagePath);
+    if (url.startsWith('assets/')) {
+      return Image.asset(url, width: width, height: height, fit: fit);
+    }
+    if (url.startsWith('http')) {
       return CachedNetworkImage(
-        imageUrl: imagePath,
+        imageUrl: url,
         width: width,
         height: height,
         fit: fit,
@@ -40,11 +46,6 @@ class FastImage extends StatelessWidget {
         ),
       );
     }
-    return Image.asset(
-      imagePath,
-      width: width,
-      height: height,
-      fit: fit,
-    );
+    return Image.asset(fallbackAsset, width: width, height: height, fit: fit);
   }
 }
