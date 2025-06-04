@@ -7,7 +7,12 @@ import '../models/food_item_model.dart';
 import '../models/ingredient_entry.dart';
 
 class FoodService {
-  static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/foods';
+  // static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/foods';
+  // static const String _baseUrl =
+  //     "http://192.168.1.103:5000/api/v1/foods"; // Địa chỉ IP thật của PC
+
+  static const String _baseUrl =
+      "http://10.13.2.127:5000/api/v1/foods"; // Địa chỉ IP thật của PC (TC)
 
   // ==== Helper lấy access token từ Firebase (bắt buộc để gọi API BE) ====
   static Future<String> _getIdToken() async {
@@ -242,6 +247,26 @@ class FoodService {
       return rawList.map((e) => IngredientEntry.fromJson(e)).toList();
     } else {
       _handleError(response, defaultMsg: 'Lỗi khi tải nguyên liệu công thức');
+    }
+    throw Exception('Unexpected error');
+  }
+
+  static Future<List<FoodItem>> getFavoriteFoods(List<int> favoriteIds) async {
+    final idToken = await _getIdToken();
+    final uri = Uri.parse('$_baseUrl/favorites');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({'favorite_ids': favoriteIds}),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> rawList = jsonDecode(response.body);
+      return rawList.map((e) => FoodItem.fromJson(e)).toList();
+    } else {
+      _handleError(response, defaultMsg: 'Lỗi khi tải danh sách yêu thích');
     }
     throw Exception('Unexpected error');
   }

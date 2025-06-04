@@ -20,14 +20,6 @@ class FoodItem(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now())
 
-class BarcodeScan(db.Model):
-    __tablename__ = 'barcode_scans'
-    scan_id = db.Column(db.BigInteger, primary_key=True)
-    user_id = db.Column(db.BigInteger, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
-    barcode = db.Column(db.String(50), nullable=False)
-    food_item_id = db.Column(db.BigInteger, db.ForeignKey('food_items.food_item_id'))
-    scanned_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
-
 
 class FoodItemIngredient(db.Model):
     __tablename__ = 'food_item_ingredients'

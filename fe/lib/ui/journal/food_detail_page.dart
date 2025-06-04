@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/food/my_food_cubit.dart';
 import '../../blocs/food/custom_food_cubit.dart';
 import '../../blocs/food/custom_food_state.dart';
 import '../../blocs/food/food_cubit.dart';
@@ -14,6 +15,7 @@ import '../../widgets/fast_image.dart';
 import '../../widgets/macro_pie_chart.dart';
 import 'add_custom_food_page.dart';
 import 'create_recipe_page.dart';
+import '../../services/favorite_service.dart';
 
 class FoodDetailPage extends StatefulWidget {
   final int foodId;
@@ -39,6 +41,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
   bool _showMore = false;
   late final TextEditingController _controller;
   bool _isFavorite = false;
+  bool _favoriteChanged = false; // <-- Thêm biến này để kiểm tra thay đổi
 
   @override
   void initState() {
@@ -51,18 +54,59 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     if (state is! FoodLoaded || state.food.foodItemId != widget.foodId) {
       context.read<FoodCubit>().loadFoodDetail(widget.foodId);
     }
-    // TODO: Load trạng thái favorite từ server/local nếu có
+
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    final fav = await FavoriteService.isFavorite(widget.foodId);
+    if (mounted) setState(() => _isFavorite = fav);
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isFavorite) {
+      await FavoriteService.removeFavorite(widget.foodId);
+      if (mounted) setState(() => _isFavorite = false);
+      _favoriteChanged = true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã xoá khỏi yêu thích!")),
+      );
+    } else {
+      final count = await FavoriteService.countFavorites();
+      if (count >= FavoriteService.maxFavorites) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Giới hạn yêu thích'),
+            content: const Text(
+                'Bạn chỉ có thể lưu tối đa ${FavoriteService.maxFavorites} món ăn yêu thích.\n'
+                'Hãy xoá bớt hoặc thay thế món khác nhé!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Đóng'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      await FavoriteService.addFavorite(widget.foodId);
+      if (mounted) setState(() => _isFavorite = true);
+      _favoriteChanged = true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã thêm vào yêu thích!")),
+      );
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  void _toggleFavorite() {
-    setState(() => _isFavorite = !_isFavorite);
-    // TODO: Gửi favorite lên backend nếu có
   }
 
   Map<String, dynamic> _calculateNutrition(food, double quantity) {
@@ -85,253 +129,272 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocListener(
-      listeners: [
-        BlocListener<CustomFoodCubit, CustomFoodState>(
-          listener: (context, state) async {
-            if (state is CustomFoodSuccess) {
-              if (!context.mounted) return;
-              await showSuccessDialog(context, 'Đã xoá thành công!');
-              if (context.mounted) Navigator.pop(context, true);
-            } else if (state is CustomFoodError) {
-              if (!context.mounted) return;
-              final msg = state.message.toLowerCase();
-              if (msg.contains('foreignkeyviolation') ||
-                  msg.contains('referenced from table') ||
-                  msg.contains('cannot_delete_used_food') ||
-                  msg.contains('xoá thực phẩm thất bại') ||
-                  msg.contains('xoa thuc pham that bai')) {
-                await showErrorDialog(
-                  context,
-                  'Không thể xoá món ăn này vì đã từng được sử dụng trong nhật ký.\n'
-                  'Hãy xoá các log/bữa ăn liên quan trước rồi thử lại nhé!',
-                );
-              } else {
-                final displayMsg =
-                    msg.replaceFirst(RegExp(r'^exception:\s*'), '');
-                await showErrorDialog(context, displayMsg);
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _favoriteChanged ? true : null);
+        return false;
+      },
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<CustomFoodCubit, CustomFoodState>(
+            listener: (context, state) async {
+              if (state is CustomFoodSuccess) {
+                if (!context.mounted) return;
+                await showSuccessDialog(context, 'Đã xoá thành công!');
+                if (context.mounted) Navigator.pop(context, true);
+              } else if (state is CustomFoodError) {
+                if (!context.mounted) return;
+                final msg = state.message.toLowerCase();
+                if (msg.contains('foreignkeyviolation') ||
+                    msg.contains('referenced from table') ||
+                    msg.contains('cannot_delete_used_food') ||
+                    msg.contains('xoá thực phẩm thất bại') ||
+                    msg.contains('xoa thuc pham that bai')) {
+                  await showErrorDialog(
+                    context,
+                    'Không thể xoá món ăn này vì đã từng được sử dụng trong nhật ký.\n'
+                    'Hãy xoá các log/bữa ăn liên quan trước rồi thử lại nhé!',
+                  );
+                } else {
+                  final displayMsg =
+                      msg.replaceFirst(RegExp(r'^exception:\s*'), '');
+                  await showErrorDialog(context, displayMsg);
+                }
               }
-            }
-          },
-        ),
-      ],
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          leading: const BackButton(),
-          title: const Text('Chi tiết món ăn'),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: Icon(_isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: Colors.pinkAccent),
-              tooltip: _isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích",
-              onPressed: _toggleFavorite,
+            },
+          ),
+        ],
+        child: Scaffold(
+          resizeToAvoidBottomInset: true,
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context, _favoriteChanged ? true : null);
+              },
             ),
-          ],
-        ),
-        body: BlocBuilder<FoodCubit, FoodState>(
-          builder: (context, state) {
-            if (state is FoodLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is FoodLoaded) {
-              final food = state.food;
-              final nutri = _calculateNutrition(food, _quantity);
+            title: const Text('Chi tiết món ăn'),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: Icon(_isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.pinkAccent),
+                tooltip: _isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích",
+                onPressed: _toggleFavorite,
+              ),
+            ],
+          ),
+          body: BlocBuilder<FoodCubit, FoodState>(
+            builder: (context, state) {
+              if (state is FoodLoading) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (state is FoodLoaded) {
+                final food = state.food;
+                final nutri = _calculateNutrition(food, _quantity);
 
-              // --- Fix bug dính nguyên liệu cũ ---
-              if (food.isRecipe) {
-                context
-                    .read<RecipeCubit>()
-                    .loadRecipeIngredients(food.foodItemId);
-              } else {
-                context.read<RecipeCubit>().reset();
-              }
+                if (food.isRecipe) {
+                  context
+                      .read<RecipeCubit>()
+                      .loadRecipeIngredients(food.foodItemId);
+                } else {
+                  context.read<RecipeCubit>().reset();
+                }
 
-              return Stack(
-                children: [
-                  ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 180),
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: FastImage(
-                          imagePath: food.imageUrl ?? '',
-                          height: 180,
-                          width: 180,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              food.name,
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                return Stack(
+                  children: [
+                    ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 180),
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: FastImage(
+                            imagePath: food.imageUrl ?? '',
+                            height: 180,
+                            width: 180,
+                            fit: BoxFit.cover,
                           ),
-                          if (food.isCustom || food.isRecipe)
-                            PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert,
-                                  color: Colors.white),
-                              onSelected: (value) async {
-                                if (value == 'edit') {
-                                  final result = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => food.isRecipe
-                                          ? CreateRecipePage(
-                                              initialRecipe: food, isEdit: true)
-                                          : AddCustomFoodPage(
-                                              initialFood: food, isEdit: true),
-                                    ),
-                                  );
-                                  if (result == true && context.mounted) {
-                                    context
-                                        .read<FoodCubit>()
-                                        .loadFoodDetail(food.foodItemId);
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                food.name,
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (food.isCustom || food.isRecipe)
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert,
+                                    color: Colors.white),
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => food.isRecipe
+                                            ? CreateRecipePage(
+                                                initialRecipe: food,
+                                                isEdit: true)
+                                            : AddCustomFoodPage(
+                                                initialFood: food,
+                                                isEdit: true),
+                                      ),
+                                    );
+                                    if (result == true && context.mounted) {
+                                      context
+                                          .read<FoodCubit>()
+                                          .loadFoodDetail(food.foodItemId);
+                                      context
+                                          .read<MyFoodsCubit>()
+                                          .loadMyFoods();
+                                    }
+                                  } else if (value == 'delete') {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text("Xác nhận xoá"),
+                                        content: Text(
+                                            'Bạn có chắc muốn xoá "${food.name}" không?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: const Text("Huỷ"),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            style: TextButton.styleFrom(
+                                                foregroundColor: Colors.red),
+                                            child: const Text("Xoá"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed == true && context.mounted) {
+                                      await context
+                                          .read<CustomFoodCubit>()
+                                          .deleteCustomFood(food.foodItemId);
+                                    }
                                   }
-                                } else if (value == 'delete') {
-                                  final confirmed = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text("Xác nhận xoá"),
-                                      content: Text(
-                                          'Bạn có chắc muốn xoá "${food.name}" không?'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text("Huỷ"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red),
-                                          child: const Text("Xoá"),
-                                        ),
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit,
+                                            color: Colors.deepOrange, size: 18),
+                                        SizedBox(width: 10),
+                                        Text('Sửa thông tin'),
                                       ],
                                     ),
-                                  );
-                                  if (confirmed == true && context.mounted) {
-                                    await context
-                                        .read<CustomFoodCubit>()
-                                        .deleteCustomFood(food.foodItemId);
-                                  }
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.edit,
-                                          color: Colors.deepOrange, size: 18),
-                                      SizedBox(width: 10),
-                                      Text('Sửa thông tin'),
-                                    ],
                                   ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.delete,
-                                          color: Colors.red, size: 18),
-                                      SizedBox(width: 10),
-                                      Text('Xoá món ăn'),
-                                    ],
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete,
+                                            color: Colors.red, size: 18),
+                                        SizedBox(width: 10),
+                                        Text('Xoá món ăn'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        MacroPieChart(
+                          calories: nutri['cal'] * 1.0,
+                          protein: nutri['pro'],
+                          carbs: nutri['carb'],
+                          fat: nutri['fat'],
+                          showIcon: true,
+                        ),
+                        const SizedBox(height: 12),
+                        if (food.isCustom)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    color: Colors.amber, size: 16),
+                                SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Do người dùng cung cấp, chưa được xác nhận',
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.white70),
                                   ),
                                 ),
                               ],
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      MacroPieChart(
-                        calories: nutri['cal'] * 1.0,
-                        protein: nutri['pro'],
-                        carbs: nutri['carb'],
-                        fat: nutri['fat'],
-                        showIcon: true,
-                      ),
-                      const SizedBox(height: 12),
-                      if (food.isCustom)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 12.0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded,
-                                  color: Colors.amber, size: 16),
-                              SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Do người dùng cung cấp, chưa được xác nhận',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.white70),
-                                ),
-                              ),
-                            ],
                           ),
-                        ),
-                      const SizedBox(height: 24),
-                      const Text('Giá trị dinh dưỡng',
-                          style: TextStyle(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      _nutrientRow('Năng lượng', '${nutri['cal']} kcal'),
-                      _nutrientRow('Đường bột (carb)',
-                          '${nutri['carb'].toStringAsFixed(1)} g'),
-                      _nutrientRow('Chất béo (fat)',
-                          '${nutri['fat'].toStringAsFixed(1)} g'),
-                      _nutrientRow('Chất đạm (protein)',
-                          '${nutri['pro'].toStringAsFixed(1)} g'),
-                      if (_showMore && food.isRecipe) ...[
                         const SizedBox(height: 24),
-                        const Text('Nguyên liệu',
+                        const Text('Giá trị dinh dưỡng',
                             style: TextStyle(
                                 color: Colors.white70,
                                 fontWeight: FontWeight.w600)),
-                        BlocBuilder<RecipeCubit, RecipeState>(
-                          builder: (context, state) {
-                            if (state is RecipeIngredientsLoaded) {
-                              return Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: state.ingredients
-                                    .map((e) => Chip(label: Text(e.food.name)))
-                                    .toList(),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                        const SizedBox(height: 8),
+                        _nutrientRow('Năng lượng', '${nutri['cal']} kcal'),
+                        _nutrientRow('Đường bột (carb)',
+                            '${nutri['carb'].toStringAsFixed(1)} g'),
+                        _nutrientRow('Chất béo (fat)',
+                            '${nutri['fat'].toStringAsFixed(1)} g'),
+                        _nutrientRow('Chất đạm (protein)',
+                            '${nutri['pro'].toStringAsFixed(1)} g'),
+                        if (_showMore && food.isRecipe) ...[
+                          const SizedBox(height: 24),
+                          const Text('Nguyên liệu',
+                              style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600)),
+                          BlocBuilder<RecipeCubit, RecipeState>(
+                            builder: (context, state) {
+                              if (state is RecipeIngredientsLoaded) {
+                                return Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: state.ingredients
+                                      .map(
+                                          (e) => Chip(label: Text(e.food.name)))
+                                      .toList(),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _showMore = !_showMore),
+                          child: Text(_showMore ? 'Ẩn bớt' : 'Xem thêm',
+                              style:
+                                  const TextStyle(color: Colors.purpleAccent)),
                         ),
                       ],
-                      TextButton(
-                        onPressed: () => setState(() => _showMore = !_showMore),
-                        child: Text(_showMore ? 'Ẩn bớt' : 'Xem thêm',
-                            style: const TextStyle(color: Colors.purpleAccent)),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                    left: 0,
-                    right: 0,
-                    child: _buildBottomBar(context, food),
-                  ),
-                ],
-              );
-            }
-            return const Center(child: Text('Không tìm thấy món ăn'));
-          },
+                    ),
+                    Positioned(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                      left: 0,
+                      right: 0,
+                      child: _buildBottomBar(context, food),
+                    ),
+                  ],
+                );
+              }
+              return const Center(child: Text('Không tìm thấy món ăn'));
+            },
+          ),
         ),
       ),
     );

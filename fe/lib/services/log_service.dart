@@ -6,7 +6,11 @@ import 'package:nutrition_app/models/log_entry.dart';
 import 'package:nutrition_app/models/recent_log_model.dart';
 
 class LogService {
-  static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/logs';
+  // static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/logs';
+  // static const String _baseUrl =
+  //     "http://192.168.1.103:5000/api/v1/logs"; // Địa chỉ IP thật của PC
+  static const String _baseUrl =
+      "http://10.13.2.127:5000/api/v1/logs"; // Địa chỉ IP thật của PC (TC)
 
   Future<List<RecentLog>> getRecentLogs(DateTime date) async {
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();

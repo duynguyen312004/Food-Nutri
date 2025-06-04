@@ -1,5 +1,3 @@
-// 📄 JournalPage: Hiển thị nhật ký dinh dưỡng theo giờ trong ngày, gồm metrics, meal/water/exercise logs.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -18,26 +16,29 @@ class JournalPage extends StatefulWidget {
   const JournalPage({super.key});
 
   @override
-  State<JournalPage> createState() => _JournalPageState();
+  JournalPageState createState() => JournalPageState();
 }
 
-class _JournalPageState extends State<JournalPage>
-    with AutomaticKeepAliveClientMixin {
+class JournalPageState extends State<JournalPage> {
   DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    // 🟣 Khi page được tạo xong, load metrics và logs cho ngày hiện tại
-
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadMetricsAndLogs());
   }
-  // 🟣 Hàm này dùng để load lại metrics và logs nếu dữ liệu chưa được load hoặc không khớp ngày
+
+  // Hàm này sẽ được gọi từ MainScreen khi cần reset về hôm nay
+  void resetToToday() {
+    setState(() {
+      _selectedDate = DateTime.now();
+    });
+    _loadMetricsAndLogs();
+  }
 
   void _loadMetricsAndLogs() {
     final metrics = context.read<MetricsCubit>().state;
     final journal = context.read<JournalCubit>().state;
-
     if (metrics is! MetricsLoaded ||
         !_isSameDate(metrics.date, _selectedDate)) {
       context.read<MetricsCubit>().loadMetricsForDate(_selectedDate);
@@ -47,30 +48,26 @@ class _JournalPageState extends State<JournalPage>
       context.read<JournalCubit>().loadLogs(_selectedDate);
     }
   }
-  // 🔹 So sánh 2 ngày có giống nhau không (bỏ qua giờ phút)
 
   bool _isSameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context), // 🔹 Header chuyển ngày
-            _buildMetricsRow(), // 🔹 Dòng tổng hợp metrics
-            Expanded(child: _buildTimeline()), // 🔹 Timeline theo giờ
+            _buildHeader(context), // Header chuyển ngày
+            _buildMetricsRow(), // Dòng tổng hợp metrics
+            Expanded(child: _buildTimeline()), // Timeline theo giờ
           ],
         ),
       ),
     );
   }
 
-  @override
-  bool get wantKeepAlive => true; // 🔹 Đảm bảo không bị dispose khi chuyển tab
-// 🟣 Header với nút chuyển ngày
+  // Header với nút chuyển ngày
   Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -104,7 +101,7 @@ class _JournalPageState extends State<JournalPage>
     );
   }
 
-// 🟣 Dòng metrics gồm calories, protein, carb, fat, nước, calo đốt
+  // Dòng metrics gồm calories, protein, carb, fat, nước, calo đốt
   Widget _buildMetricsRow() {
     return BlocBuilder<MetricsCubit, MetricsState>(
       builder: (context, state) {
@@ -162,7 +159,7 @@ class _JournalPageState extends State<JournalPage>
     );
   }
 
-  // 🔹 Tạo metric dạng progress bar thông minh có consumed/target
+  // Tạo metric dạng progress bar thông minh
   Widget _buildSmartMetric({
     required String iconPath,
     required num consumed,
@@ -176,7 +173,7 @@ class _JournalPageState extends State<JournalPage>
     return _buildMetricTile(iconPath, label, color, percent);
   }
 
-// 🔹 Widget nhỏ hiển thị mỗi chỉ số (dưới dạng thanh)
+  // Widget nhỏ hiển thị mỗi chỉ số (dưới dạng thanh)
   Widget _buildMetricTile(
       String iconPath, String label, Color color, double percent) {
     return Padding(
@@ -190,7 +187,7 @@ class _JournalPageState extends State<JournalPage>
     );
   }
 
-// 🟣 Tạo timeline từ 0h đến 23h, mỗi giờ là 1 block
+  // Tạo timeline từ 0h đến 23h, mỗi giờ là 1 block
   Widget _buildTimeline() {
     return BlocBuilder<JournalCubit, JournalState>(
       builder: (context, state) {
@@ -204,8 +201,8 @@ class _JournalPageState extends State<JournalPage>
       },
     );
   }
-// 🟣 Hiển thị mỗi giờ trong ngày, gồm giờ + tổng hợp meal (nếu có) + nút thêm log + các log (meal, water, exercise)
 
+  // Hiển thị mỗi giờ trong ngày, gồm tổng hợp + nút + các log
   Widget _buildHourBlock(BuildContext context, int hour, List<LogEntry> logs) {
     final label = '${hour.toString().padLeft(2, '0')}:00';
     final entries = logs.where((e) => e.timestamp.hour == hour).toList();
@@ -333,8 +330,7 @@ class _JournalPageState extends State<JournalPage>
     );
   }
 
-// 🔹 Tạo icon + text nhỏ (calories, protein, carb, fat) hiển thị tổng hợp meal trong từng giờ
-
+  // Icon + text nhỏ (calories, protein, carb, fat) hiển thị tổng hợp meal từng giờ
   Widget _buildSummaryIcon(String iconName, String value) {
     return Padding(
       padding: const EdgeInsets.only(right: 10),
@@ -347,8 +343,8 @@ class _JournalPageState extends State<JournalPage>
       ),
     );
   }
-// 🔹 Bọc log trong Dismissible để có thể vuốt xóa, xử lý xoá log và hiển thị dialog xác nhận
 
+  // Bọc log trong Dismissible
   Widget _buildDismissibleLog(BuildContext context, LogEntry e, Widget child) {
     return Dismissible(
       key: ValueKey('${e.type}-${e.logId}-${e.timestamp}'),
@@ -375,8 +371,8 @@ class _JournalPageState extends State<JournalPage>
     );
   }
 }
-// 🟣 Hiển thị thông tin món ăn đã log: hình ảnh, tên món, khẩu phần và thành phần dinh dưỡng (calo, protein, carb, fat)
 
+// Card món ăn đã log
 class _MealCard extends StatelessWidget {
   final LogEntry log;
   const _MealCard({required this.log});
@@ -462,7 +458,6 @@ class _MealCard extends StatelessWidget {
       ),
     );
   }
-// 🔹 Dùng trong _MealCard để render icon + giá trị dinh dưỡng nhỏ gọn (ví dụ: 🥩 20g)
 
   Widget _iconText(String icon, String text) {
     return Row(
@@ -477,8 +472,8 @@ class _MealCard extends StatelessWidget {
     );
   }
 }
-// 🟣 Hiển thị log uống nước: đơn giản chỉ gồm icon ly nước và số ml
 
+// Log uống nước
 class _WaterCard extends StatelessWidget {
   final LogEntry log;
   const _WaterCard({required this.log});
@@ -495,8 +490,8 @@ class _WaterCard extends StatelessWidget {
     );
   }
 }
-// 🟣 Hiển thị log bài tập: tên bài tập, thời lượng (phút), lượng calo đã đốt
 
+// Log bài tập
 class _ExerciseCard extends StatelessWidget {
   final LogEntry log;
   const _ExerciseCard({required this.log});
@@ -520,8 +515,8 @@ class _ExerciseCard extends StatelessWidget {
     );
   }
 }
-// 🟣 Một ô nhỏ hiển thị icon, label (dạng số liệu ví dụ: 300/500 kcal) và thanh progress biểu thị tỉ lệ hoàn thành mục tiêu
 
+// MetricTile hiển thị chỉ số + progress
 class _MetricTile extends StatelessWidget {
   final String iconPath;
   final String label;

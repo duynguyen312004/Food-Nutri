@@ -127,13 +127,14 @@ class _PageIndicator extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          height: OnboardingScreen2._pageIndicatorHeight,
-          width: 110,
-          decoration: BoxDecoration(
-            color: i <= currentIndex ? Colors.lightGreenAccent : Colors.grey,
-            borderRadius: BorderRadius.circular(56),
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            height: OnboardingScreen2._pageIndicatorHeight,
+            decoration: BoxDecoration(
+              color: i <= currentIndex ? Colors.lightGreenAccent : Colors.grey,
+              borderRadius: BorderRadius.circular(56),
+            ),
           ),
         );
       }),

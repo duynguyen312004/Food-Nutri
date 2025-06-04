@@ -48,16 +48,17 @@ class _BmiCategoryTableState extends State<BmiCategoryTable> {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 0),
-            child: Row(
-              children: [
-                Text(
-                  'Bảng phân loại mức độ gầy - béo dựa vào chỉ số BMI',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14),
-                ),
-              ],
+            child: Padding(
+              padding: EdgeInsets.only(top: 4, left: 0, right: 0, bottom: 0),
+              child: Text(
+                'Bảng phân loại mức độ gầy - béo dựa vào chỉ số BMI',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14),
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
             ),
           ),
           if (_expanded) ...[

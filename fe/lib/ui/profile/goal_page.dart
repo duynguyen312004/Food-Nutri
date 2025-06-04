@@ -20,6 +20,13 @@ class GoalPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Lấy Cubit
+    final weightLogCubit = context.read<WeightLogCubit>();
+    final weightState = weightLogCubit.state;
+    // Gọi fetch nếu logs chưa có (chỉ gọi 1 lần đầu, không spam)
+    if (weightState is! WeightLogLoaded || weightState.logs.isEmpty) {
+      weightLogCubit.fetchWeightLogs();
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(

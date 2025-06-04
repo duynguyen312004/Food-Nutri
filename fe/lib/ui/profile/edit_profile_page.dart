@@ -517,8 +517,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     fontWeight: FontWeight.w700,
                     fontSize: 15),
               ),
-              SizedBox(width: 6),
-              Icon(Icons.info_outline, color: Colors.white30, size: 18)
             ],
           ),
         ),
@@ -625,32 +623,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
         const SizedBox(height: 8),
         // ==== CÂN NẶNG LÝ TƯỞNG LOCAL ====
         Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.green.shade700,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Cân nặng lý tưởng của bạn được ước tính $idealWeight',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w500),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.green.shade700,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  // Cần bọc bằng Expanded hoặc Flexible
+                  child: Text(
+                    'Cân nặng lý tưởng của bạn được ước tính $idealWeight',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
                 ),
-              ),
-              const Tooltip(
-                message:
-                    'Dựa theo chỉ số BMI lý tưởng là 22 (khuyến nghị bởi WHO cho sức khỏe tốt nhất).',
-                child:
-                    Icon(Icons.info_outline, color: Colors.white54, size: 18),
-              ),
-            ],
-          ),
-        ),
+                IconButton(
+                  icon: const Icon(Icons.info_outline,
+                      color: Colors.white54, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Thông tin cân nặng lý tưởng'),
+                        content: const Text(
+                            'Dựa theo chỉ số BMI lý tưởng là 22 (khuyến nghị bởi WHO cho sức khỏe tốt nhất).'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Đóng'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            )),
         const SizedBox(height: 18),
       ],
     );

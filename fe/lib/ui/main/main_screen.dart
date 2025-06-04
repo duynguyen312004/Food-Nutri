@@ -19,23 +19,23 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    JournalPage(),
-    PlansPage(),
-    ProfilePage(),
-  ];
+  // GlobalKey cho HomePage và JournalPage
+  final GlobalKey<HomePageState> homeKey = GlobalKey<HomePageState>();
+  final GlobalKey<JournalPageState> journalKey = GlobalKey<JournalPageState>();
 
-  void _onTabSelected(int index) {
-    if (index == _currentIndex) return;
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+
+    // Khởi tạo _pages với key
+    _pages = [
+      HomePage(key: homeKey),
+      JournalPage(key: journalKey),
+      const PlansPage(),
+      const ProfilePage(),
+    ];
 
     final today = DateTime.now();
     // Preload dữ liệu khi mở MainScreen lần đầu
@@ -44,6 +44,23 @@ class MainScreenState extends State<MainScreen> {
       context.read<JournalCubit>().loadLogs(today);
       context.read<RecentMealsCubit>().loadRecentMeals(today);
       context.read<MyFoodsCubit>().loadMyFoods();
+    });
+  }
+
+  void _onTabSelected(int index) {
+    if (index == _currentIndex) return;
+
+    // Khi chuyển sang tab HomePage
+    if (index == 0) {
+      homeKey.currentState?.resetToToday();
+    }
+    // Khi chuyển sang tab JournalPage
+    if (index == 1) {
+      journalKey.currentState?.resetToToday();
+    }
+
+    setState(() {
+      _currentIndex = index;
     });
   }
 

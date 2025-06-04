@@ -6,6 +6,16 @@ import 'food_state.dart';
 class FoodCubit extends Cubit<FoodState> {
   FoodCubit() : super(FoodInitial());
 
+  Future<void> loadFavoriteFoods(List<int> favoriteIds) async {
+    emit(FoodLoading());
+    try {
+      final results = await FoodService.getFavoriteFoods(favoriteIds);
+      emit(FoodListLoaded(results));
+    } catch (e) {
+      emit(FoodError(e.toString()));
+    }
+  }
+
   Future<void> loadFoodDetail(int foodId) async {
     emit(FoodLoading());
     try {

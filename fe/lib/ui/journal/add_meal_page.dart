@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../blocs/food/custom_food_cubit.dart';
 import '../../blocs/food/my_food_cubit.dart';
@@ -12,6 +13,7 @@ import '../../blocs/recent_log/recent_meals_cubit.dart';
 import '../../blocs/recent_log/recent_meals_state.dart';
 import '../../blocs/log/journal_cubit.dart';
 import '../../blocs/metrics/metrics_cubit.dart';
+import '../../services/favorite_service.dart';
 import '../../widgets/fast_image.dart';
 import 'add_custom_food_page.dart';
 import 'create_recipe_page.dart';
@@ -38,12 +40,24 @@ class _AddMealPageState extends State<AddMealPage> {
   final _searchController = TextEditingController();
   String _searchText = '';
   Timer? _debounceTimer;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    final state = context.read<RecentMealsCubit>().state;
+    if (state is! RecentMealsLoaded) {
+      context.read<RecentMealsCubit>().loadRecentMeals(widget.selectedDate);
+    }
   }
 
   void _onSearchChanged(String query) {
@@ -57,12 +71,35 @@ class _AddMealPageState extends State<AddMealPage> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    final state = context.read<RecentMealsCubit>().state;
-    if (state is! RecentMealsLoaded) {
-      context.read<RecentMealsCubit>().loadRecentMeals(widget.selectedDate);
+  void _listenVoice() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) => setState(() => _isListening = val == "listening"),
+        // ignore: avoid_print
+        onError: (val) => print('onError: $val'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          localeId: 'vi_VN',
+          onResult: (val) {
+            print('VOICE DEBUG: "${val.recognizedWords}"');
+            setState(() {
+              _isListening = false;
+              _searchController.text = val.recognizedWords;
+              _searchText = val.recognizedWords;
+            });
+            _onSearchChanged(val.recognizedWords);
+          },
+        );
+      } else {
+        if (!mounted) return;
+        showErrorDialog(
+            context, "Không bật được microphone. Kiểm tra quyền truy cập nhé!");
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
     }
   }
 
@@ -82,6 +119,22 @@ class _AddMealPageState extends State<AddMealPage> {
         child: Column(
           children: [
             _buildSearchBar(),
+            if (_isListening)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.mic, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Đang lắng nghe...",
+                      style: TextStyle(
+                          color: Colors.red[300], fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
             if (_searchText.isEmpty) ...[
               _buildTabBar(),
               const SizedBox(height: 8),
@@ -132,84 +185,6 @@ class _AddMealPageState extends State<AddMealPage> {
     );
   }
 
-  Widget _buildSearchResults() {
-    return BlocBuilder<FoodCubit, FoodState>(
-      builder: (context, state) {
-        if (state is FoodLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is FoodListLoaded) {
-          final foods = state.results;
-          if (foods.isEmpty) {
-            return const Center(child: Text("Không tìm thấy món ăn nào!"));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: foods.length,
-            itemBuilder: (context, index) {
-              final food = foods[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: MealCard(
-                  name: food.name,
-                  quantity: food.servingSize,
-                  unit: food.servingUnit,
-                  calories: food.calories.toInt(),
-                  protein: food.protein,
-                  carbs: food.carbs,
-                  fat: food.fat,
-                  imagePath: food.imageUrl ?? 'assets/images/food.jpg',
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MultiBlocProvider(
-                          providers: [
-                            BlocProvider.value(
-                                value: context.read<FoodCubit>()),
-                            BlocProvider.value(
-                                value: context.read<JournalCubit>()),
-                            BlocProvider.value(
-                                value: context.read<MetricsCubit>()),
-                            BlocProvider(create: (_) => RecipeCubit()),
-                          ],
-                          child: FoodDetailPage(
-                            foodId: food.foodItemId,
-                            initialQuantity: food.servingSize,
-                            timestamp: DateTime(
-                              widget.selectedDate.year,
-                              widget.selectedDate.month,
-                              widget.selectedDate.day,
-                              widget.selectedHour,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-// Nếu đã thêm thành công
-                    if (result == true) {
-                      _searchController.clear();
-                      setState(() {
-                        _searchText = '';
-                        _selectedTabIndex = 0; // Reset về tab Gần đây
-                      });
-                      if (!context.mounted) return;
-                      await context
-                          .read<RecentMealsCubit>()
-                          .loadRecentMeals(widget.selectedDate);
-                    }
-                  },
-                ),
-              );
-            },
-          );
-        } else if (state is FoodError) {
-          return Center(child: Text('Lỗi: ${state.message}'));
-        }
-        return const SizedBox();
-      },
-    );
-  }
-
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -219,7 +194,16 @@ class _AddMealPageState extends State<AddMealPage> {
           final selected = index == _selectedTabIndex;
           return Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = index),
+              onTap: () async {
+                setState(() => _selectedTabIndex = index);
+                if (index == 2) {
+                  // Yêu thích
+                  final favIds = await FavoriteService.getFavorites();
+                  if (mounted) {
+                    context.read<FoodCubit>().loadFavoriteFoods(favIds);
+                  }
+                }
+              },
               child: Column(
                 children: [
                   Text(
@@ -250,36 +234,56 @@ class _AddMealPageState extends State<AddMealPage> {
   }
 
   Widget _buildAddOptionsRow() {
-    final options = [
-      {'label': 'Mã vạch', 'image': 'assets/icons/qr_scan.png'},
-      {'label': 'Scan ảnh', 'image': 'assets/icons/camera.png'},
-      {'label': 'Voice log', 'image': 'assets/icons/mic.png'},
-    ];
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: options.map((opt) {
-          return Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(16),
+        children: [
+          _addOptionItem('Mã vạch', 'assets/icons/qr_scan.png', null),
+          _addOptionItem('Scan ảnh', 'assets/icons/camera.png', null),
+          _addOptionItem('Voice log', 'assets/icons/mic.png', _listenVoice,
+              isListening: _isListening),
+        ],
+      ),
+    );
+  }
+
+  Widget _addOptionItem(String label, String icon, VoidCallback? onTap,
+      {bool isListening = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: BoxDecoration(
+          color: isListening ? Colors.red.withOpacity(0.1) : Colors.white10,
+          borderRadius: BorderRadius.circular(16),
+          border: isListening
+              ? Border.all(color: Colors.redAccent, width: 2)
+              : null,
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconTheme(
+              data: IconThemeData(color: isListening ? Colors.red : null),
+              child: Image.asset(icon,
+                  width: 32,
+                  height: 32,
+                  color: isListening ? Colors.redAccent : null),
             ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(opt['image']!, width: 32, height: 32),
-                const SizedBox(height: 6),
-                Text(opt['label']!,
-                    style: const TextStyle(fontSize: 12, color: Colors.white))
-              ],
-            ),
-          );
-        }).toList(),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isListening ? Colors.redAccent : Colors.white,
+                fontWeight: isListening ? FontWeight.bold : FontWeight.normal,
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
@@ -301,7 +305,6 @@ class _AddMealPageState extends State<AddMealPage> {
                 itemBuilder: (context, index) {
                   if (index == 0) return _buildAddOptionsRow();
                   final meal = meals[index - 1];
-
                   return Dismissible(
                     key: ValueKey(meal.foodItemId),
                     direction: DismissDirection.endToStart,
@@ -380,12 +383,10 @@ class _AddMealPageState extends State<AddMealPage> {
       case 1:
         return BlocBuilder<MyFoodsCubit, MyFoodsState>(
           builder: (context, state) {
-            // 2 nút tạo món và tạo thực phẩm, bạn giữ lại phần icon + style của mình
             Widget addRow = Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Row(
                 children: [
-                  // Nút Tạo mới món ăn
                   Expanded(
                     child: GestureDetector(
                       onTap: () async {
@@ -398,7 +399,6 @@ class _AddMealPageState extends State<AddMealPage> {
                             ),
                           ),
                         );
-
                         if (result == true && context.mounted) {
                           context.read<MyFoodsCubit>().loadMyFoods();
                         }
@@ -414,11 +414,8 @@ class _AddMealPageState extends State<AddMealPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Image.asset(
-                              'assets/icons/recipe_book.png',
-                              width: 36,
-                              height: 36,
-                            ),
+                            Image.asset('assets/icons/recipe_book.png',
+                                width: 36, height: 36),
                             const SizedBox(height: 8),
                             Text(
                               'Tạo mới món ăn',
@@ -433,11 +430,9 @@ class _AddMealPageState extends State<AddMealPage> {
                       ),
                     ),
                   ),
-                  // Nút Tạo mới thực phẩm
                   Expanded(
                     child: GestureDetector(
                       onTap: () async {
-                        // Mở trang tạo thực phẩm mới
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -447,7 +442,6 @@ class _AddMealPageState extends State<AddMealPage> {
                             ),
                           ),
                         );
-                        // Sau khi tạo mới xong, reload lại danh sách
                         if (result == true && context.mounted) {
                           context.read<MyFoodsCubit>().loadMyFoods();
                         }
@@ -463,11 +457,8 @@ class _AddMealPageState extends State<AddMealPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Image.asset(
-                              'assets/icons/add_food.png',
-                              width: 36,
-                              height: 36,
-                            ),
+                            Image.asset('assets/icons/add_food.png',
+                                width: 36, height: 36),
                             const SizedBox(height: 8),
                             const Text(
                               'Tạo mới thực phẩm',
@@ -486,7 +477,6 @@ class _AddMealPageState extends State<AddMealPage> {
               ),
             );
 
-            // List món tự tạo hoặc empty/error state
             Widget foodList;
             if (state is MyFoodsLoading) {
               foodList = const Padding(
@@ -530,7 +520,6 @@ class _AddMealPageState extends State<AddMealPage> {
                             ),
                           ),
                         );
-
                         if (result == true && context.mounted) {
                           context.read<MyFoodsCubit>().loadMyFoods();
                         }
@@ -553,7 +542,6 @@ class _AddMealPageState extends State<AddMealPage> {
               foodList = const SizedBox();
             }
 
-            // Wrap bằng SingleChildScrollView để luôn giữ nút add ở trên cùng
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -565,6 +553,89 @@ class _AddMealPageState extends State<AddMealPage> {
             );
           },
         );
+      case 2:
+        return FutureBuilder<List<int>>(
+          future: FavoriteService.getFavorites(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final favIds = snapshot.data!;
+            if (favIds.isEmpty) {
+              return const Center(
+                  child: Text('Chưa có món ăn yêu thích nào!',
+                      style: TextStyle(color: Colors.white70)));
+            }
+
+            return BlocBuilder<FoodCubit, FoodState>(
+              builder: (context, state) {
+                if (state is FoodLoading || state is FoodInitial) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state is FoodListLoaded) {
+                  final favFoods = state.results;
+                  if (favFoods.isEmpty) {
+                    return const Center(
+                        child: Text('Chưa có món ăn yêu thích nào!',
+                            style: TextStyle(color: Colors.white70)));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: favFoods.length,
+                    itemBuilder: (context, index) {
+                      final food = favFoods[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: MealCard(
+                          name: food.name,
+                          quantity: food.servingSize,
+                          unit: food.servingUnit,
+                          calories: food.calories.toInt(),
+                          protein: food.protein,
+                          carbs: food.carbs,
+                          fat: food.fat,
+                          imagePath: food.imageUrl ?? 'assets/images/food.jpg',
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FoodDetailPage(
+                                  foodId: food.foodItemId,
+                                  initialQuantity: food.servingSize,
+                                  timestamp: DateTime(
+                                    widget.selectedDate.year,
+                                    widget.selectedDate.month,
+                                    widget.selectedDate.day,
+                                    widget.selectedHour,
+                                  ),
+                                ),
+                              ),
+                            );
+                            // 👇 CHỈ RELOAD KHI result == true (tức là có đổi favorite)
+                            if (result == true) {
+                              final favIds =
+                                  await FavoriteService.getFavorites();
+                              if (context.mounted) {
+                                context
+                                    .read<FoodCubit>()
+                                    .loadFavoriteFoods(favIds);
+                                setState(() {}); // Đảm bảo rebuild lại tab
+                              }
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  );
+                }
+                if (state is FoodError) {
+                  return Center(child: Text(state.message));
+                }
+                return const SizedBox();
+              },
+            );
+          },
+        );
 
       default:
         return const Center(
@@ -572,6 +643,83 @@ class _AddMealPageState extends State<AddMealPage> {
               style: TextStyle(color: Colors.white70)),
         );
     }
+  }
+
+  Widget _buildSearchResults() {
+    return BlocBuilder<FoodCubit, FoodState>(
+      builder: (context, state) {
+        if (state is FoodLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is FoodListLoaded) {
+          final foods = state.results;
+          if (foods.isEmpty) {
+            return const Center(child: Text("Không tìm thấy món ăn nào!"));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: foods.length,
+            itemBuilder: (context, index) {
+              final food = foods[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: MealCard(
+                  name: food.name,
+                  quantity: food.servingSize,
+                  unit: food.servingUnit,
+                  calories: food.calories.toInt(),
+                  protein: food.protein,
+                  carbs: food.carbs,
+                  fat: food.fat,
+                  imagePath: food.imageUrl ?? 'assets/images/food.jpg',
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            BlocProvider.value(
+                                value: context.read<FoodCubit>()),
+                            BlocProvider.value(
+                                value: context.read<JournalCubit>()),
+                            BlocProvider.value(
+                                value: context.read<MetricsCubit>()),
+                            BlocProvider(create: (_) => RecipeCubit()),
+                          ],
+                          child: FoodDetailPage(
+                            foodId: food.foodItemId,
+                            initialQuantity: food.servingSize,
+                            timestamp: DateTime(
+                              widget.selectedDate.year,
+                              widget.selectedDate.month,
+                              widget.selectedDate.day,
+                              widget.selectedHour,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      _searchController.clear();
+                      setState(() {
+                        _searchText = '';
+                        _selectedTabIndex = 0;
+                      });
+                      if (!context.mounted) return;
+                      await context
+                          .read<RecentMealsCubit>()
+                          .loadRecentMeals(widget.selectedDate);
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        } else if (state is FoodError) {
+          return Center(child: Text('Lỗi: ${state.message}'));
+        }
+        return const SizedBox();
+      },
+    );
   }
 
   Widget _buildEmptyStateMyFoods() {

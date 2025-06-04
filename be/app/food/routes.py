@@ -1,5 +1,7 @@
 from sqlite3 import IntegrityError
 import traceback
+
+import requests
 from extensions import db
 from flask import Blueprint, g, jsonify, request
 from auth.decorators import firebase_required
@@ -160,4 +162,22 @@ def update_recipe(recipe_id):
         return jsonify(updated), 200
     except Exception as e:
         traceback.print_exc()
+        return jsonify({'error': str(e)}), 400
+
+@food_bp.route('/favorites', methods=['POST'])
+@firebase_required()
+def get_favorite_foods():
+    """
+    API lấy danh sách món ăn yêu thích theo list id.
+    Body JSON: { "favorite_ids": [1,2,3,4] }
+    """
+    try:
+        user_id = g.current_user.user_id
+        data = request.get_json()
+        favorite_ids = data.get("favorite_ids", [])
+        from food.services import get_favorite_foods_service
+        foods = get_favorite_foods_service(favorite_ids, user_id)
+        return jsonify(foods), 200
+    except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 400

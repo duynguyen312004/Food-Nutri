@@ -2,6 +2,7 @@ import os
 import unicodedata
 import uuid
 from flask import current_app, json, request
+import requests
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 from extensions import db
@@ -379,3 +380,68 @@ def get_my_foods(user_id, limit=20):
         is_recipe = food.food_item_id in recipe_ids
         results.append(food_to_dict(food, is_recipe=is_recipe))
     return results
+
+
+def food_to_dict_full(food):
+    return {
+        'food_item_id': food.food_item_id,
+        'name': food.name,
+        'name_unsigned': food.name_unsigned,
+        'brand': food.brand,
+        'calories': float(food.calories),
+        'protein': float(food.protein_g),
+        'carbs': float(food.carbs_g),
+        'fat': float(food.fat_g),
+        'serving_size': float(food.serving_size),
+        'serving_unit': food.serving_unit,
+        'is_custom': food.is_custom,
+        'is_recipe': food.is_recipe,
+        'barcode': food.barcode,
+        'image_url': food.image_url,
+    }
+
+def search_food_items_by_name(query, user_id=None, limit=15):
+    query_unsigned = remove_vietnamese_accents(query.lower())
+    filters = [
+        or_(
+            FoodItem.name.ilike(f"%{query}%"),
+            FoodItem.name_unsigned.ilike(f"%{query_unsigned}%")
+        )
+    ]
+    if user_id is not None:
+        filters.append(
+            or_(
+                FoodItem.is_custom == False,
+                (FoodItem.is_custom == True) & (FoodItem.created_by == user_id)
+            )
+        )
+    foods = FoodItem.query.filter(*filters).limit(limit).all()
+    return foods
+
+
+
+def get_favorite_foods_service(favorite_ids, user_id=None):
+    """
+    Lấy danh sách món ăn theo list favorite_ids.
+    Chỉ trả về các món thuộc favorite_ids.
+    Nếu user_id được truyền vào, chỉ cho phép lấy món custom do user đó tạo.
+    """
+    if not favorite_ids:
+        return []
+
+    query = FoodItem.query.filter(FoodItem.food_item_id.in_(favorite_ids))
+    # Nếu có user_id: chỉ cho phép xem món custom của user hoặc món mặc định
+    if user_id is not None:
+        query = query.filter(
+            or_(
+                FoodItem.is_custom == False,
+                (FoodItem.is_custom == True) & (FoodItem.created_by == user_id)
+            )
+        )
+
+    foods = query.all()
+    # Trả về list dict (theo đúng thứ tự favorite_ids nếu cần)
+    id_to_food = {food.food_item_id: food_to_dict(food) for food in foods}
+    # Đảm bảo đúng thứ tự phía FE lưu
+    return [id_to_food[fid] for fid in favorite_ids if fid in id_to_food]
+

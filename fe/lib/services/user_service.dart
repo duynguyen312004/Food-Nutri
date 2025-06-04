@@ -10,7 +10,12 @@ import '../models/user_settings.dart';
 
 class UserService {
   // ignore: unused_field
-  static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/users';
+  // static const String _baseUrl = 'http://10.0.2.2:5000/api/v1/users';
+  // static const String _baseUrl =
+  //     "http://192.168.1.103:5000/api/v1/users"; // Địa chỉ IP thật của PC
+
+  static const String _baseUrl =
+      "http://10.13.2.127:5000/api/v1/users"; // Địa chỉ IP thật của PC (TC)
 
   /// Lấy thông tin profile hiện tại
   Future<UserModel> fetchProfile() async {

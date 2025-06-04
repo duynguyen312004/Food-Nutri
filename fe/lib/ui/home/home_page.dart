@@ -8,11 +8,10 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  HomePageState createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with AutomaticKeepAliveClientMixin {
+class HomePageState extends State<HomePage> {
   late DateTime _today;
   late int _todayIndex;
   int _selectedWeekday = 0;
@@ -20,10 +19,13 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+    _initToday();
+  }
+
+  void _initToday() {
     _today = DateTime.now();
     _todayIndex = _today.weekday % 7;
     _selectedWeekday = _todayIndex;
-
     // Không gọi nếu đã preload trong MainScreen
     final currentState = context.read<MetricsCubit>().state;
     if (currentState is! MetricsLoaded ||
@@ -32,13 +34,21 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  // Cho MainScreen gọi để reset về hôm nay khi chuyển tab
+  void resetToToday() {
+    setState(() {
+      _initToday();
+    });
+    // Đảm bảo luôn load lại
+    context.read<MetricsCubit>().loadMetricsForDate(DateTime.now());
+  }
+
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Quan trọng với KeepAlive
     return Scaffold(
       body: SafeArea(
         child: BlocBuilder<MetricsCubit, MetricsState>(
@@ -64,8 +74,6 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  @override
-  bool get wantKeepAlive => true;
   Widget _buildHeader(BuildContext context) {
     final days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     final todayIndex = DateTime.now().weekday % 7;
@@ -196,7 +204,6 @@ class _HomePageState extends State<HomePage>
                 ],
               ),
               const SizedBox(height: 16),
-
               // Circular progress + remaining calories
               SizedBox(
                 height: 160,
@@ -271,9 +278,7 @@ class _HomePageState extends State<HomePage>
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               // Stats row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,

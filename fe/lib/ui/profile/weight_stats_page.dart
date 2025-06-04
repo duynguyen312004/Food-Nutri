@@ -111,15 +111,12 @@ class _WeightStatsPageState extends State<WeightStatsPage> {
                   title: const Text("Ghi lại cân nặng"),
                   onTap: () => Navigator.pop(context, 'log'),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.flag),
-                  title: const Text("Chỉnh cân nặng mục tiêu"),
-                  onTap: () => Navigator.pop(context, 'goal'),
+                const SizedBox(
+                  height: 6,
                 )
               ],
             ));
     if (choice == 'log') _showAddWeightDialog();
-    if (choice == 'goal') {}
   }
 
   @override
